@@ -65,7 +65,7 @@ public class ClienteCRUD {
 			
 			try (Connection conn = DBConnection.getConnection();
 					PreparedStatement stmt = conn.prepareStatement(sql)){
-					stmt.setInt(5, cliente.getIdCliente());
+					stmt.setInt(7, cliente.getIdCliente());
 					stmt.setString(1, cliente.getNome());
 					stmt.setString(2, cliente.getEmail());
 					stmt.setString(3, cliente.getMorada());

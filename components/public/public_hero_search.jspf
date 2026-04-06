@@ -1,0 +1,37 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<div class="public-search-box">
+    <form class="public-search-box__form" action="#" method="get">
+        <div class="public-search-box__field">
+            <label class="public-search-box__label" for="origin">Origem</label>
+            <input class="public-search-box__control" type="text" id="origin" name="origin" placeholder="Ex.: Porto">
+        </div>
+
+        <div class="public-search-box__field">
+            <label class="public-search-box__label" for="destination">Destino</label>
+            <input class="public-search-box__control" type="text" id="destination" name="destination" placeholder="Ex.: Paris">
+        </div>
+
+        <div class="public-search-box__field">
+            <label class="public-search-box__label" for="departureDate">Data</label>
+            <input class="public-search-box__control" type="date" id="departureDate" name="departureDate">
+        </div>
+
+        <div class="public-search-box__field">
+            <label class="public-search-box__label" for="travellers">Viajantes</label>
+            <select class="public-search-box__control" id="travellers" name="travellers">
+                <option value="">Selecionar</option>
+                <option value="1">1 viajante - Solo</option>
+                <option value="2">2 viajantes - Casal</option>
+                <option value="3">3 viajantes</option>
+                <option value="4">4 viajantes</option>
+                <option value="family">Família / grupo</option>
+            </select>
+        </div>
+
+        <button class="btn btn-accent public-search-box__action" type="submit">
+            Pesquisar
+        </button>
+
+        <%-- Duarte: este formulário deverá futuramente enviar os filtros para o endpoint/API de pesquisa pública de ofertas. --%>
+    </form>
+</div>

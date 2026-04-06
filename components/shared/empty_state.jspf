@@ -1,0 +1,8 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+
+<div class="empty-state">
+    <h2 class="empty-state__title">${param.title}</h2>
+    <p class="empty-state__text">${param.text}</p>
+
+    <%-- Duarte: este componente poderá mais tarde ser mostrado com base em listas vazias vindas do backend. --%>
+</div>

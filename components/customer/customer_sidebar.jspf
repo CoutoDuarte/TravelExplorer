@@ -1,0 +1,20 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<nav class="surface-block customer-sidebar" aria-label="Menu lateral da área de cliente">
+    <div class="flow">
+        <jsp:include page="/components/shared/page_header.jsp">
+            <jsp:param name="eyebrow" value="Área pessoal" />
+            <jsp:param name="heading" value="Cliente" />
+            <jsp:param name="description" value="Acede rapidamente às opções principais da tua conta." />
+        </jsp:include>
+
+        <div class="flow">
+            <a class="btn btn-ghost customer-sidebar__link" data-customer-page="customer-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard">Dashboard</a>
+            <a class="btn btn-ghost customer-sidebar__link" data-customer-page="my-reservations" href="${pageContext.request.contextPath}/index.jsp?page=my-reservations">As minhas reservas</a>
+            <a class="btn btn-ghost customer-sidebar__link" data-customer-page="saved-offers" href="${pageContext.request.contextPath}/index.jsp?page=saved-offers">Ofertas guardadas</a>
+            <a class="btn btn-ghost customer-sidebar__link" data-customer-page="profile" href="${pageContext.request.contextPath}/index.jsp?page=profile">Perfil</a>
+        </div>
+    </div>
+
+    <%-- Duarte: este menu poderá mais tarde destacar a página ativa e usar rotas reais da área de cliente. --%>
+    <%-- Duarte: os atributos data-customer-page foram preparados para permitir destaque visual da página ativa e futura integração com navegação baseada em estado/autenticação. --%>
+</nav>

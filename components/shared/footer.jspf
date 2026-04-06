@@ -1,0 +1,12 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<div class="site-footer-simple">
+    <span class="site-footer-simple__brand">TravelExplorer</span>
+    <p>
+        Descobre ofertas, encontra destinos e planeia a tua próxima viagem de forma simples.
+    </p>
+    <small>
+        &copy; 2026 TravelExplorer. Todos os direitos reservados.
+    </small>
+
+    <%-- Duarte: no futuro, este footer poderá receber links dinâmicos, contactos da agência ou dados vindos da configuração global. --%>
+</div>

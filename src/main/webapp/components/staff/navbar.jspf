@@ -1,0 +1,21 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<nav class="public-navbar" aria-label="Navegação principal da área staff">
+    <div class="public-navbar__inner">
+        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard" aria-label="Ir para a dashboard da área staff">
+            <span class="public-navbar__brand-mark">TE</span>
+            <span class="public-navbar__brand-text">TravelExplorer</span>
+        </a>
+
+        <div class="public-navbar__actions">
+            <span class="text-muted staff-navbar-note">Área staff</span>
+            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Dashboard</a>
+            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Ver área pública</a>
+            <a class="btn btn-secondary staff-navbar__link" data-staff-nav-page="staff-admin" href="${pageContext.request.contextPath}/index.jsp?page=staff-admin">Administração</a>
+            <a class="btn btn-secondary staff-navbar__link" data-staff-nav-page="login" href="${pageContext.request.contextPath}/index.jsp?page=login">Terminar sessão</a>
+        </div>
+    </div>
+
+    
+    
+    
+</nav>

@@ -1,0 +1,31 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<nav class="public-navbar" aria-label="Navegação principal pública">
+    <div class="public-navbar__inner">
+        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp" aria-label="Ir para a página inicial do TravelExplorer">
+            <span class="public-navbar__brand-mark">TE</span>
+            <span class="public-navbar__brand-text">TravelExplorer</span>
+        </a>
+
+        <ul class="public-navbar__links" role="list">
+            <li>
+                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
+            </li>
+            <li>
+                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=offers">Ofertas</a>
+            </li>
+            <li>
+                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=destinations">Destinos</a>
+            </li>
+            <li>
+                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=about">Sobre</a>
+            </li>
+        </ul>
+
+        <div class="public-navbar__actions">
+            <a class="btn btn-ghost" href="${pageContext.request.contextPath}/index.jsp?page=login">Entrar</a>
+            <a class="btn btn-primary" href="${pageContext.request.contextPath}/index.jsp?page=register">Criar conta</a>
+        </div>
+    </div>
+
+    
+</nav>

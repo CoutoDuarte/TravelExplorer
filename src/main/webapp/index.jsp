@@ -51,6 +51,12 @@ if ("offers".equals(pageParam)) {
     layoutPage = "/layouts/staff_layout.jsp";
 }
 
+if ("logout".equals(pageParam)) {
+    session.invalidate();
+    response.sendRedirect(request.getContextPath() + "/index.jsp?page=login");
+    return;
+}
+
 request.setAttribute("contentPage", contentPage);
 %>
 <jsp:include page="<%= layoutPage %>" />

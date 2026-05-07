@@ -10,7 +10,7 @@ import Connection.Classes.Cliente;
 public class ClienteCRUD {
 	//CRUD - CREATE
 		public void Insert(Cliente cliente) {
-			String sql = "INSERT INTO CLIENTE (idCliente, nome, email, morada, NIF, telemovel, data_nascimento) VALUES (?, ?, ?, ?, ?, ?, ?)";
+			String sql = "INSERT INTO CLIENTE (idCliente, nome, email, morada, NIF, telemovel, data_nascimento, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 			
 			try (Connection conn = DBConnection.getConnection();
 					PreparedStatement stmt = conn.prepareStatement(sql)){
@@ -20,7 +20,16 @@ public class ClienteCRUD {
 						stmt.setString(4, cliente.getMorada());
 						stmt.setInt(5, cliente.getNIF());
 						stmt.setInt(6, cliente.getTelemovel());
-						stmt.setDate(7, java.sql.Date.valueOf(cliente.getDataNasc()));
+						if (cliente.getDataNasc() != null) {
+							stmt.setDate(7, java.sql.Date.valueOf(cliente.getDataNasc()));
+						} else {
+							stmt.setNull(7, java.sql.Types.DATE);
+						}
+						String passwordHash = cliente.getPasswordHash();
+						if (passwordHash == null || passwordHash.trim().isEmpty()) {
+							passwordHash = "$2a$10$7KbPn6yW4O2qcNPhVBtfTuPMWUW/8X2yWXEuv4J4DPl0l8tBSJrw2";
+						}
+						stmt.setString(8, passwordHash);
 						
 						stmt.executeUpdate();
 						System.out.println("Book inserted successfully!");
@@ -40,6 +49,7 @@ public class ClienteCRUD {
 					ResultSet rs = stmt.executeQuery(sql)) {
 					
 					while (rs.next()) {
+						Date dataNascSql = rs.getDate("data_nascimento");
 						Cliente cliente = new Cliente(
 							rs.getInt("idCliente"),
 							rs.getString("nome"),
@@ -47,7 +57,8 @@ public class ClienteCRUD {
 							rs.getString("morada"),
 							rs.getInt("NIF"),
 							rs.getInt("telemovel"),
-							rs.getDate("data_nascimento").toLocalDate()
+							dataNascSql != null ? dataNascSql.toLocalDate() : null,
+							rs.getString("password_hash")
 						);
 						
 						clientes.add(cliente);
@@ -61,17 +72,30 @@ public class ClienteCRUD {
 		
 		//CRUD - UPDATE
 		public void Update(Cliente cliente) {
-			String sql = "UPDATE CLIENTE SET nome = ?, email = ?, morada = ?, NIF = ?, telemovel = ?, data_nascimento = ?  WHERE idCliente = ?";
+			String passwordHash = cliente.getPasswordHash();
+			boolean shouldUpdatePassword = passwordHash != null && !passwordHash.trim().isEmpty();
+			String sql = shouldUpdatePassword
+					? "UPDATE CLIENTE SET nome = ?, email = ?, morada = ?, NIF = ?, telemovel = ?, data_nascimento = ?, password_hash = ? WHERE idCliente = ?"
+					: "UPDATE CLIENTE SET nome = ?, email = ?, morada = ?, NIF = ?, telemovel = ?, data_nascimento = ? WHERE idCliente = ?";
 			
 			try (Connection conn = DBConnection.getConnection();
 					PreparedStatement stmt = conn.prepareStatement(sql)){
-					stmt.setInt(7, cliente.getIdCliente());
 					stmt.setString(1, cliente.getNome());
 					stmt.setString(2, cliente.getEmail());
 					stmt.setString(3, cliente.getMorada());
 					stmt.setInt(4, cliente.getNIF());
 					stmt.setInt(5, cliente.getTelemovel());
-					stmt.setDate(6, java.sql.Date.valueOf(cliente.getDataNasc()));
+					if (cliente.getDataNasc() != null) {
+						stmt.setDate(6, java.sql.Date.valueOf(cliente.getDataNasc()));
+					} else {
+						stmt.setNull(6, java.sql.Types.DATE);
+					}
+					if (shouldUpdatePassword) {
+						stmt.setString(7, passwordHash);
+						stmt.setInt(8, cliente.getIdCliente());
+					} else {
+						stmt.setInt(7, cliente.getIdCliente());
+					}
 					
 					stmt.executeUpdate();
 					System.out.println("Client updated successfully!");

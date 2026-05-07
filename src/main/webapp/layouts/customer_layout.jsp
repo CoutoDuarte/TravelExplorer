@@ -1,4 +1,13 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%
+Object auth = session.getAttribute("auth");
+Object userType = session.getAttribute("userType");
+
+if (auth == null || !"cliente".equals(String.valueOf(userType))) {
+    response.sendRedirect(request.getContextPath() + "/index.jsp?page=login");
+    return;
+}
+%>
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>

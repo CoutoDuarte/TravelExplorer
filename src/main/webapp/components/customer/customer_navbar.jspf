@@ -11,11 +11,7 @@
             <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="customer-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard">Dashboard</a>
             <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
             <a class="btn btn-secondary customer-navbar__link" data-customer-nav-page="profile" href="${pageContext.request.contextPath}/index.jsp?page=profile">Perfil</a>
-            <a class="btn btn-secondary customer-navbar__link" data-customer-nav-page="login" href="${pageContext.request.contextPath}/index.jsp?page=login">Terminar sessão</a>
+            <a class="btn btn-secondary customer-navbar__link" data-customer-nav-page="login" href="${pageContext.request.contextPath}/index.jsp?page=logout">Terminar sessão</a>
         </div>
     </div>
-
-    
-    
-    
 </nav>

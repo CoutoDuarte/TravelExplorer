@@ -8,99 +8,171 @@ import Connection.DBConnection;
 import Connection.Classes.Funcionario;
 
 public class FuncionarioCRUD {
-	// CRUD - CREATE
-	public void Insert(Funcionario func) {
-		String sql = "INSERT INTO FUNCIONARIO (idFuncionario, nome, email, telefone, salario, password_hash) VALUES (?, ?, ?, ?, ?, ?)";
 
-		try (Connection conn = DBConnection.getConnection();
-				PreparedStatement stmt = conn.prepareStatement(sql)) {
-			stmt.setInt(1, func.getIdFuncionario());
-			stmt.setString(2, func.getNome());
-			stmt.setString(3, func.getEmail());
-			stmt.setInt(4, func.getTelemovel());
-			stmt.setFloat(5, func.getSalario());
-			String passwordHash = func.getPasswordHash();
-			if (passwordHash == null || passwordHash.trim().isEmpty()) {
-				passwordHash = "$2a$10$7KbPn6yW4O2qcNPhVBtfTuPMWUW/8X2yWXEuv4J4DPl0l8tBSJrw2";
-			}
-			stmt.setString(6, passwordHash);
+    private static final String DEFAULT_PASSWORD_HASH =
+            "$2a$10$7KbPn6yW4O2qcNPhVBtfTuPMWUW/8X2yWXEuv4J4DPl0l8tBSJrw2";
 
-			stmt.executeUpdate();
-			System.out.println("Book inserted successfully!");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+    // CREATE
+    public boolean insert(Funcionario funcionario) {
+        String sql = "INSERT INTO FUNCIONARIO (idFuncionario, nome, email, telefone, salario, password_hash) "
+                   + "VALUES (?, ?, ?, ?, ?, ?)";
 
-	// CRUD - READ
-	public List<Funcionario> getAllFuncionarios() {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-		List<Funcionario> funcionarios = new ArrayList<>();
-		String sql = "SELECT * FROM FUNCIONARIO";
+            stmt.setInt(1, funcionario.getIdFuncionario());
+            stmt.setString(2, funcionario.getNome());
+            stmt.setString(3, funcionario.getEmail());
+            stmt.setInt(4, funcionario.getTelemovel());
+            stmt.setFloat(5, funcionario.getSalario());
 
-		try (Connection conn = DBConnection.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+            String passwordHash = funcionario.getPasswordHash();
+            if (passwordHash == null || passwordHash.trim().isEmpty()) {
+                passwordHash = DEFAULT_PASSWORD_HASH;
+            }
+            stmt.setString(6, passwordHash);
 
-			while (rs.next()) {
-				Funcionario funcionario = new Funcionario(
-						rs.getInt("idFuncionario"),
-						rs.getString("nome"),
-						rs.getString("email"),
-						rs.getInt("telefone"),
-						rs.getFloat("salario"),
-						rs.getString("password_hash"));
+            int rows = stmt.executeUpdate();
+            System.out.println("Funcionario inserted successfully!");
+            return rows > 0;
 
-				funcionarios.add(funcionario);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
-		return funcionarios;
-	}
+    // READ - todos
+    public List<Funcionario> getAllFuncionarios() {
+        List<Funcionario> funcionarios = new ArrayList<>();
+        String sql = "SELECT * FROM FUNCIONARIO";
 
-	// CRUD - UPDATE
-	public void Update(Funcionario func) {
-		String passwordHash = func.getPasswordHash();
-		boolean shouldUpdatePassword = passwordHash != null && !passwordHash.trim().isEmpty();
-		String sql = shouldUpdatePassword
-				? "UPDATE FUNCIONARIO SET nome = ?, email = ?, telefone = ?, salario = ?, password_hash = ? WHERE idFuncionario = ?"
-				: "UPDATE FUNCIONARIO SET nome = ?, email = ?, telefone = ?, salario = ? WHERE idFuncionario = ?";
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
 
-		try (Connection conn = DBConnection.getConnection();
-				PreparedStatement stmt = conn.prepareStatement(sql)) {
-			stmt.setString(1, func.getNome());
-			stmt.setString(2, func.getEmail());
-			stmt.setInt(3, func.getTelemovel());
-			stmt.setFloat(4, func.getSalario());
-			if (shouldUpdatePassword) {
-				stmt.setString(5, passwordHash);
-				stmt.setInt(6, func.getIdFuncionario());
-			} else {
-				stmt.setInt(5, func.getIdFuncionario());
-			}
+            while (rs.next()) {
+                funcionarios.add(map(rs));
+            }
 
-			stmt.executeUpdate();
-			System.out.println("Client updated successfully!");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
-	}
+        return funcionarios;
+    }
 
-	// CRUD - DELETE
-	public void Delete(Funcionario func) {
-		String sql = "DELETE FROM FUNCIONARIO WHERE idFuncionario= ?";
+    public List<Funcionario> findAll() {
+        return getAllFuncionarios();
+    }
 
-		try (Connection conn = DBConnection.getConnection();
-				PreparedStatement stmt = conn.prepareStatement(sql)) {
-			stmt.setInt(1, func.getIdFuncionario());
+    // READ - por ID
+    public Funcionario findById(int id) {
+        String sql = "SELECT * FROM FUNCIONARIO WHERE idFuncionario = ?";
 
-			stmt.executeUpdate();
-			System.out.println("Client deleted!");
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    // READ - por email (útil para login)
+    public Funcionario findByEmail(String email) {
+        String sql = "SELECT * FROM FUNCIONARIO WHERE email = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, email);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    // UPDATE
+    public boolean update(Funcionario funcionario) {
+        String passwordHash = funcionario.getPasswordHash();
+        boolean shouldUpdatePassword = passwordHash != null && !passwordHash.trim().isEmpty();
+
+        String sql = shouldUpdatePassword
+                ? "UPDATE FUNCIONARIO SET nome = ?, email = ?, telefone = ?, salario = ?, password_hash = ? WHERE idFuncionario = ?"
+                : "UPDATE FUNCIONARIO SET nome = ?, email = ?, telefone = ?, salario = ? WHERE idFuncionario = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, funcionario.getNome());
+            stmt.setString(2, funcionario.getEmail());
+            stmt.setInt(3, funcionario.getTelemovel());
+            stmt.setFloat(4, funcionario.getSalario());
+
+            if (shouldUpdatePassword) {
+                stmt.setString(5, passwordHash);
+                stmt.setInt(6, funcionario.getIdFuncionario());
+            } else {
+                stmt.setInt(5, funcionario.getIdFuncionario());
+            }
+
+            int rows = stmt.executeUpdate();
+            System.out.println("Funcionario updated successfully!");
+            return rows > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // DELETE - por ID
+    public boolean delete(int id) {
+        String sql = "DELETE FROM FUNCIONARIO WHERE idFuncionario = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            int rows = stmt.executeUpdate();
+            System.out.println("Funcionario deleted!");
+            return rows > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean delete(Funcionario funcionario) {
+        return delete(funcionario.getIdFuncionario());
+    }
+
+    // Mapper privado
+    private Funcionario map(ResultSet rs) throws SQLException {
+        return new Funcionario(
+            rs.getInt("idFuncionario"),
+            rs.getString("nome"),
+            rs.getString("email"),
+            rs.getInt("telefone"),
+            rs.getFloat("salario"),
+            rs.getString("password_hash")
+        );
+    }
 }

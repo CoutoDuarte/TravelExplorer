@@ -2,22 +2,14 @@ package Connection;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 
 public class DBConnection {
-    private static final String URL = "jdbc:mysql://localhost:3306/agencia_viagens";
-    private static final String USER = "root";
-    private static final String PASSWORD = "";
+    private static final String url = "jdbc:mysql://127.0.0.1:3306/TravelExplorer?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
+    private static final String username = "travel_user";
+    private static final String password = "Root123!";
 
-    static {
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Driver MySQL não encontrado", e);
-        }
-    }
-
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASSWORD);
+    public static Connection getConnection() throws Exception {
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        return DriverManager.getConnection(url, username, password);
     }
 }

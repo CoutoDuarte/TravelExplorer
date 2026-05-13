@@ -1,4 +1,8 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.time.LocalDate,Connection.Classes.Cliente,Connection.CRUD.ClienteCRUD,org.mindrot.jbcrypt.BCrypt" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.time.LocalDate" %>
+<%@ page import="Connection.Classes.Cliente" %>
+<%@ page import="Connection.CRUD.ClienteCRUD" %>
+<%@ page import="org.mindrot.jbcrypt.BCrypt" %>
 <%!
 private String escapeHtml(String value) {
     if (value == null) {

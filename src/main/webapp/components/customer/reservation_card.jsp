@@ -1,4 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%
+String detailsUrl = request.getParameter("detailsUrl") != null ? request.getParameter("detailsUrl") : "#";
+%>
 <article class="surface-block customer-summary-card">
     <div class="flow">
         <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
@@ -18,7 +21,7 @@
         </div>
 
         <div class="actions-row">
-            <a class="btn btn-secondary" href="#">Ver detalhes</a>
+            <a class="btn btn-secondary" href="<%= detailsUrl %>">Ver detalhes</a>
         </div>
     </div>
 

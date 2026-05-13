@@ -107,6 +107,26 @@ public class PagamentoCRUD {
         return pagamentos;
     }
 
+    public double sumValorByCliente(int idCliente) {
+        String sql = "SELECT COALESCE(SUM(valor), 0) FROM PAGAMENTO WHERE idCliente = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
     // READ - por reserva
     public List<Pagamento> findByReserva(int idReserva) {
         List<Pagamento> pagamentos = new ArrayList<>();

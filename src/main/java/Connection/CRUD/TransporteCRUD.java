@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,6 +55,37 @@ public class TransporteCRUD {
                     rs.getFloat("preco"),
                     rs.getInt("lugares")
                 ));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return lista;
+    }
+
+    public List<Transporte> findByPacote(int idPacote) {
+        List<Transporte> lista = new ArrayList<>();
+        String sql = "SELECT t.* FROM TRANSPORTE t JOIN PACOTE_TRANSPORTE pt ON pt.idTransporte = t.idTransporte WHERE pt.idPacote = ? ORDER BY t.data_hora_partida ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idPacote);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(new Transporte(
+                        rs.getInt("idTransporte"),
+                        rs.getString("empresa"),
+                        rs.getString("tipo"),
+                        rs.getString("origem"),
+                        rs.getString("destino"),
+                        rs.getTimestamp("data_hora_partida"),
+                        rs.getTimestamp("data_hora_chegada"),
+                        rs.getFloat("preco"),
+                        rs.getInt("lugares")
+                    ));
+                }
             }
 
         } catch (Exception e) {

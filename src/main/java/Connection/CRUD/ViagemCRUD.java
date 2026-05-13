@@ -96,6 +96,27 @@ public class ViagemCRUD {
         return null;
     }
 
+    public List<Viagens> findByPacote(int idPacote) {
+        List<Viagens> lista = new ArrayList<>();
+        String sql = "SELECT v.* FROM VIAGENS v JOIN PACOTE_VIAGENS pv ON pv.idViagem = v.idViagem WHERE pv.idPacote = ? ORDER BY v.data_hora_partida ASC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idPacote);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(map(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return lista;
+    }
+
     // UPDATE
     public boolean update(Viagens viagem) {
         String sql = "UPDATE VIAGENS SET numero_bilhetes_adulto = ?, numero_bilhetes_crianca = ?, "

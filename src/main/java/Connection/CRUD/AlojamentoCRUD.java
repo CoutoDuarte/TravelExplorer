@@ -58,6 +58,32 @@ public class AlojamentoCRUD {
 		return alojamentos;
 	}
 
+	public List<Alojamento> findByPacote(int idPacote) {
+		List<Alojamento> alojamentos = new ArrayList<>();
+		String sql = "SELECT a.* FROM ALOJAMENTO a JOIN PACOTE_ALOJAMENTO pa ON pa.idAlojamento = a.idAlojamento WHERE pa.idPacote = ?";
+
+		try (Connection conn = DBConnection.getConnection();
+				PreparedStatement stmt = conn.prepareStatement(sql)) {
+			stmt.setInt(1, idPacote);
+			try (ResultSet rs = stmt.executeQuery()) {
+				while (rs.next()) {
+					alojamentos.add(new Alojamento(
+							rs.getInt("idAlojamento"),
+							rs.getString("nome"),
+							rs.getString("morada"),
+							rs.getInt("num_pessoas"),
+							rs.getString("tipo_quarto"),
+							rs.getString("tipo_estadia"),
+							rs.getFloat("preco")));
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return alojamentos;
+	}
+
 	// CRUD - UPDATE
 	public void Update(Alojamento alojamento) {
 		String sql = "UPDATE ALOJAMENTO SET nome = ?, morada = ?, num_pessoas = ?, tipo_quarto = ?, tipo_estadia = ?, preco = ?  WHERE idAlojamento = ?";

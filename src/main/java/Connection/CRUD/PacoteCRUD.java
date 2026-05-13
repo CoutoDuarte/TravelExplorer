@@ -81,6 +81,26 @@ public class PacoteCRUD {
         return null;
     }
 
+    public Pacote findByReserva(int idReserva) {
+        String sql = "SELECT * FROM PACOTE WHERE idReserva = ? LIMIT 1";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idReserva);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
     // UPDATE
     public boolean update(Pacote pacote) {
         String sql = "UPDATE PACOTE SET descricao = ?, nome = ?, preco_base = ?, "

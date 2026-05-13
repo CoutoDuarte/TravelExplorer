@@ -107,6 +107,89 @@ public class ReservaCRUD {
         return reservas;
     }
 
+    public int countByCliente(int idCliente) {
+        String sql = "SELECT COUNT(*) FROM RESERVA WHERE idCliente = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
+    public int countAtivasByCliente(int idCliente) {
+        String sql = "SELECT COUNT(*) FROM RESERVA WHERE idCliente = ? AND LOWER(estado) NOT IN ('cancelada', 'cancelado', 'concluída', 'concluida', 'finalizada', 'finalizado')";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
+    }
+
+    public List<Reserva> findLatestByCliente(int idCliente, int limite) {
+        List<Reserva> reservas = new ArrayList<>();
+        String sql = "SELECT * FROM RESERVA WHERE idCliente = ? ORDER BY data_reserva DESC, idReserva DESC LIMIT ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idCliente);
+            stmt.setInt(2, limite);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    reservas.add(map(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return reservas;
+    }
+
+    public Reserva findByIdAndCliente(int idReserva, int idCliente) {
+        String sql = "SELECT * FROM RESERVA WHERE idReserva = ? AND idCliente = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idReserva);
+            stmt.setInt(2, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
     // UPDATE
     public boolean update(Reserva reserva) {
         String sql = "UPDATE RESERVA SET data_reserva = ?, total_pagar = ?, estado = ?, "

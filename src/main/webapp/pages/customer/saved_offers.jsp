@@ -1,4 +1,12 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.text.NumberFormat,java.time.LocalDateTime,java.time.format.DateTimeFormatter,java.util.List,java.util.Locale,Connection.Classes.ClienteOfertaGuardada,Connection.CRUD.ClienteOfertaGuardadaCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" 
+    import="java.text.NumberFormat,
+    java.time.LocalDateTime,
+    java.time.format.DateTimeFormatter,
+    java.util.List,
+    java.util.Locale,
+    Connection.Classes.ClienteOfertaGuardada, 
+    Connection.CRUD.ClienteOfertaGuardadaCRUD" %>
+    
 <%!
 private String escapeHtml(String value) {
     if (value == null) {

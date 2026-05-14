@@ -6,7 +6,6 @@
 <%@ page import="java.util.Locale" %>
 <%@ page import="Connection.Classes.Cliente" %>
 <%@ page import="Connection.Classes.Reserva" %>
-<%@ page import="Connection.Classes.Pagamento" %>
 <%@ page import="Connection.Classes.Pacote" %>
 <%@ page import="Connection.Classes.Viagens" %>
 <%@ page import="Connection.CRUD.ClienteCRUD" %>

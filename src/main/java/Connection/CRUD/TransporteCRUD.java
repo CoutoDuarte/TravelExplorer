@@ -3,7 +3,6 @@ package Connection.CRUD;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,8 +39,8 @@ public class TransporteCRUD {
         String sql = "SELECT * FROM TRANSPORTE";
 
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 lista.add(new Transporte(
@@ -62,6 +61,50 @@ public class TransporteCRUD {
         }
 
         return lista;
+    }
+
+    public List<Transporte> findAll() {
+        return getAll();
+    }
+
+    public boolean attachToPacote(int idPacote, int idTransporte) {
+        String sql = "INSERT IGNORE INTO PACOTE_TRANSPORTE (idPacote, idTransporte) VALUES (?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.setInt(2, idTransporte);
+            return stmt.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean detachFromPacote(int idPacote, int idTransporte) {
+        String sql = "DELETE FROM PACOTE_TRANSPORTE WHERE idPacote = ? AND idTransporte = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.setInt(2, idTransporte);
+            stmt.executeUpdate();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteAllTransportesForPacote(int idPacote) {
+        String sql = "DELETE FROM PACOTE_TRANSPORTE WHERE idPacote = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.executeUpdate();
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public List<Transporte> findByPacote(int idPacote) {

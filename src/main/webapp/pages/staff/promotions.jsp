@@ -1,77 +1,280 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.time.format.DateTimeFormatter,Connection.Classes.Promocao,Connection.Classes.Pacote,Connection.CRUD.PromocaoCRUD,Connection.CRUD.PacoteCRUD" %>
+<%!
+private static String escAttr(String s) {
+    if (s == null) {
+        return "";
+    }
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+}
+%>
+<%
+PromocaoCRUD promocaoCRUD = new PromocaoCRUD();
+PacoteCRUD pacoteCRUD = new PacoteCRUD();
+List<Promocao> promocoes = promocaoCRUD.findAll();
+List<Pacote> pacotes = pacoteCRUD.findAll();
+String selP = request.getParameter("selectedPromocao");
+Promocao selPromo = null;
+if (selP != null && !selP.trim().isEmpty()) {
+    try {
+        selPromo = promocaoCRUD.findById(Integer.parseInt(selP.trim()));
+    } catch (NumberFormatException ignored) {
+    }
+}
+String success = request.getParameter("success");
+String error = request.getParameter("error");
+String promoBase = request.getContextPath() + "/index.jsp?page=staff-promotions";
+DateTimeFormatter dfIso = DateTimeFormatter.ISO_LOCAL_DATE;
+DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(java.util.Locale.forLanguageTag("pt-PT"));
+boolean selInvalid = selP != null && !selP.trim().isEmpty() && selPromo == null;
+%>
 
-<div class="flow staff-shell">
-    <jsp:include page="/components/shared/page_header.jsp">
-        <jsp:param name="eyebrow" value="Promoções" />
-        <jsp:param name="heading" value="Gestão de promoções" />
-        <jsp:param name="description" value="Consulta rapidamente campanhas ativas, promoções em preparação e ações comerciais disponíveis." />
-    </jsp:include>
+<div id="staffPromoRoot" class="staff-shell staff-offers-page" data-promo-base="<%= promoBase %>">
 
-    <div class="staff-dashboard-grid">
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">Ativa</span>
-                        <h2 style="font-size: 1.2rem;">Verão Tropical</h2>
-                    </div>
-                    <span class="card__tag">PROMO-201</span>
-                </div>
+<div class="flow">
+    <% if ("promotion-created".equals(success)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--success">Promoção criada com sucesso.</div></div>
+    <% } %>
+    <% if ("promotion-updated".equals(success)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--success">Promoção atualizada com sucesso.</div></div>
+    <% } %>
+    <% if ("promotion-deleted".equals(success)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--success">Promoção eliminada com sucesso.</div></div>
+    <% } %>
+    <% if ("invalid-data".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Dados inválidos.</div></div>
+    <% } %>
+    <% if (selInvalid) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Promoção não encontrada.</div></div>
+    <% } %>
 
-                <p class="text-muted"><strong>Período:</strong> 01 Jul 2026 - 31 Ago 2026</p>
-                <p class="text-muted"><strong>Destino:</strong> Maldivas e Bali</p>
-                <p class="text-muted"><strong>Condição:</strong> Desconto até 15%</p>
-                <p class="text-muted"><strong>Estado:</strong> Campanha publicada</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Ver promoção</a>
-                </div>
-            </div>
+    <div class="staff-offers-page-header">
+        <div class="section-title">
+            <span class="section-title__eyebrow">Promoções</span>
+            <h1 class="section-title__heading">Gestão de promoções</h1>
+            <p class="section-title__description">Campanhas e promoções registadas na base PROMOCAO, com ligação opcional a pacotes.</p>
         </div>
-
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">Planeada</span>
-                        <h2 style="font-size: 1.2rem;">Escapadinhas Europeias</h2>
-                    </div>
-                    <span class="card__tag">PROMO-202</span>
-                </div>
-
-                <p class="text-muted"><strong>Período:</strong> 10 Set 2026 - 10 Out 2026</p>
-                <p class="text-muted"><strong>Destino:</strong> Roma, Paris, Santorini</p>
-                <p class="text-muted"><strong>Condição:</strong> Oferta de upgrade selecionado</p>
-                <p class="text-muted"><strong>Estado:</strong> Em preparação</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Ver promoção</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">Concluída</span>
-                        <h2 style="font-size: 1.2rem;">Primavera Cultural</h2>
-                    </div>
-                    <span class="card__tag">PROMO-203</span>
-                </div>
-
-                <p class="text-muted"><strong>Período:</strong> 15 Mar 2026 - 30 Abr 2026</p>
-                <p class="text-muted"><strong>Destino:</strong> Paris e Roma</p>
-                <p class="text-muted"><strong>Condição:</strong> Pack cultural promocional</p>
-                <p class="text-muted"><strong>Estado:</strong> Campanha encerrada</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Ver promoção</a>
-                </div>
-            </div>
+        <div class="actions-row" style="flex-shrink: 0;">
+            <button type="button" class="btn btn-primary" id="staffPromoBtnNovo">+ Nova promoção</button>
         </div>
     </div>
 
-    
-    
+    <div class="surface-block surface-block-lg staff-action-panel">
+        <% if (promocoes == null || promocoes.isEmpty()) { %>
+        <p class="text-muted">Ainda não existem promoções registadas.</p>
+        <% } else { %>
+        <div class="staff-offers-table-wrap">
+            <table class="staff-offers-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Destino</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (Promocao pr : promocoes) {
+                        String pi = pr.getPeriodoInicio() != null ? pr.getPeriodoInicio().format(dfPt) : "—";
+                        String pf = pr.getPeriodoFim() != null ? pr.getPeriodoFim().format(dfPt) : "—";
+                    %>
+                    <tr>
+                        <td><%= pr.getIdPromocao() %></td>
+                        <td><strong><%= pr.getTitulo() != null ? pr.getTitulo() : "" %></strong></td>
+                        <td><%= pr.getDestino() != null ? pr.getDestino() : "" %></td>
+                        <td><%= pi %></td>
+                        <td><%= pf %></td>
+                        <td><%= pr.getEstado() != null ? pr.getEstado() : "" %></td>
+                        <td><a class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;" href="<%= promoBase %>&amp;selectedPromocao=<%= pr.getIdPromocao() %>">Gerir</a></td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
 </div>
+
+<div id="staffPromoBackdrop" class="staff-drawer-backdrop" aria-hidden="true"></div>
+<div id="staffPromoDrawerCreate" class="staff-drawer" aria-hidden="true">
+    <div class="staff-drawer__header">
+        <h2 class="staff-drawer__title">Nova promoção</h2>
+        <button type="button" class="staff-drawer__close" id="staffPromoCloseCreate" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="staff-drawer__body flow">
+        <form class="flow" action="${pageContext.request.contextPath}/staff-promotions" method="post">
+            <input type="hidden" name="action" value="create-promotion">
+            <div>
+                <label for="promoTituloC">Título</label>
+                <input type="text" id="promoTituloC" name="titulo" required>
+            </div>
+            <div>
+                <label for="promoDestC">Destino</label>
+                <input type="text" id="promoDestC" name="destino" required>
+            </div>
+            <div>
+                <label for="promoPiC">Início</label>
+                <input type="date" id="promoPiC" name="periodo_inicio">
+            </div>
+            <div>
+                <label for="promoPfC">Fim</label>
+                <input type="date" id="promoPfC" name="periodo_fim">
+            </div>
+            <div>
+                <label for="promoCondC">Condição</label>
+                <textarea id="promoCondC" name="condicao" rows="2"></textarea>
+            </div>
+            <div>
+                <label for="promoEstC">Estado</label>
+                <input type="text" id="promoEstC" name="estado" required>
+            </div>
+            <div>
+                <label for="promoPacC">Pacote (opcional)</label>
+                <select id="promoPacC" name="idPacote">
+                    <option value="0">—</option>
+                    <% for (Pacote pk : pacotes) { %>
+                    <option value="<%= pk.getIdPacote() %>"><%= pk.getNome() != null ? pk.getNome() : ("#" + pk.getIdPacote()) %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="actions-row" style="margin-top: 1rem;">
+                <button class="btn btn-primary" type="submit">Criar promoção</button>
+                <button type="button" class="btn btn-secondary" id="staffPromoCancelCreate">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<% if (selPromo != null) { %>
+<div id="staffPromoDrawerEdit" class="staff-drawer" aria-hidden="true">
+    <div class="staff-drawer__header">
+        <h2 class="staff-drawer__title">Promoção #<%= selPromo.getIdPromocao() %></h2>
+        <button type="button" class="staff-drawer__close" id="staffPromoCloseEdit" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="staff-drawer__body flow">
+        <form class="flow" action="${pageContext.request.contextPath}/staff-promotions" method="post">
+            <input type="hidden" name="action" value="update-promotion">
+            <input type="hidden" name="idPromocao" value="<%= selPromo.getIdPromocao() %>">
+            <div>
+                <label for="promoTituloE">Título</label>
+                <input type="text" id="promoTituloE" name="titulo" value="<%= escAttr(selPromo.getTitulo()) %>" required>
+            </div>
+            <div>
+                <label for="promoDestE">Destino</label>
+                <input type="text" id="promoDestE" name="destino" value="<%= escAttr(selPromo.getDestino()) %>" required>
+            </div>
+            <div>
+                <label for="promoPiE">Início</label>
+                <input type="date" id="promoPiE" name="periodo_inicio" value="<%= selPromo.getPeriodoInicio() != null ? selPromo.getPeriodoInicio().format(dfIso) : "" %>">
+            </div>
+            <div>
+                <label for="promoPfE">Fim</label>
+                <input type="date" id="promoPfE" name="periodo_fim" value="<%= selPromo.getPeriodoFim() != null ? selPromo.getPeriodoFim().format(dfIso) : "" %>">
+            </div>
+            <div>
+                <label for="promoCondE">Condição</label>
+                <textarea id="promoCondE" name="condicao" rows="2"><%= escAttr(selPromo.getCondicao()) %></textarea>
+            </div>
+            <div>
+                <label for="promoEstE">Estado</label>
+                <input type="text" id="promoEstE" name="estado" value="<%= escAttr(selPromo.getEstado()) %>" required>
+            </div>
+            <div>
+                <label for="promoPacE">Pacote (opcional)</label>
+                <select id="promoPacE" name="idPacote">
+                    <option value="0"<%= selPromo.getIdPacote() <= 0 ? " selected" : "" %>>—</option>
+                    <% for (Pacote pk : pacotes) { %>
+                    <option value="<%= pk.getIdPacote() %>"<%= pk.getIdPacote() == selPromo.getIdPacote() ? " selected" : "" %>><%= pk.getNome() != null ? pk.getNome() : ("#" + pk.getIdPacote()) %></option>
+                    <% } %>
+                </select>
+            </div>
+            <div class="actions-row" style="margin-top: 1rem;">
+                <button class="btn btn-primary" type="submit">Guardar alterações</button>
+                <button type="button" class="btn btn-secondary" id="staffPromoCancelEdit">Cancelar</button>
+            </div>
+        </form>
+        <form action="${pageContext.request.contextPath}/staff-promotions" method="post" style="margin-top: 0.75rem;" onsubmit="return confirm('Eliminar esta promoção?');">
+            <input type="hidden" name="action" value="delete-promotion">
+            <input type="hidden" name="idPromocao" value="<%= selPromo.getIdPromocao() %>">
+            <button class="btn btn-secondary" type="submit" style="border-color: #b42318; color: #b42318;">Eliminar</button>
+        </form>
+    </div>
+</div>
+<% } %>
+
+</div>
+
+<script>
+(function() {
+  var root = document.getElementById('staffPromoRoot');
+  if (!root) return;
+  var base = root.getAttribute('data-promo-base') || '';
+  var backdrop = document.getElementById('staffPromoBackdrop');
+  var drawerCreate = document.getElementById('staffPromoDrawerCreate');
+  var drawerEdit = document.getElementById('staffPromoDrawerEdit');
+  var btnNovo = document.getElementById('staffPromoBtnNovo');
+  var btnCloseC = document.getElementById('staffPromoCloseCreate');
+  var btnCancelC = document.getElementById('staffPromoCancelCreate');
+  var btnCloseE = document.getElementById('staffPromoCloseEdit');
+  var btnCancelE = document.getElementById('staffPromoCancelEdit');
+  function lockScroll(on) { document.body.style.overflow = on ? 'hidden' : ''; }
+  function openCreate() {
+    if (!backdrop || !drawerCreate) return;
+    if (drawerEdit && drawerEdit.classList.contains('is-open')) {
+      window.location.href = base + '&openCreate=1';
+      return;
+    }
+    backdrop.classList.add('is-open');
+    drawerCreate.classList.add('is-open');
+    backdrop.setAttribute('aria-hidden', 'false');
+    drawerCreate.setAttribute('aria-hidden', 'false');
+    lockScroll(true);
+  }
+  function closeCreate() {
+    if (!backdrop || !drawerCreate) return;
+    drawerCreate.classList.remove('is-open');
+    drawerCreate.setAttribute('aria-hidden', 'true');
+    if (!drawerEdit || !drawerEdit.classList.contains('is-open')) {
+      backdrop.classList.remove('is-open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      lockScroll(false);
+    }
+  }
+  function openEdit() {
+    if (!backdrop || !drawerEdit) return;
+    backdrop.classList.add('is-open');
+    drawerEdit.classList.add('is-open');
+    backdrop.setAttribute('aria-hidden', 'false');
+    drawerEdit.setAttribute('aria-hidden', 'false');
+    lockScroll(true);
+  }
+  function closeEditNav() { window.location.href = base; }
+  if (btnNovo) btnNovo.addEventListener('click', openCreate);
+  if (btnCloseC) btnCloseC.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); closeCreate(); });
+  if (btnCancelC) btnCancelC.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); closeCreate(); });
+  if (backdrop) {
+    backdrop.addEventListener('click', function(ev) {
+      if (ev.target !== backdrop) return;
+      if (drawerCreate && drawerCreate.classList.contains('is-open')) { closeCreate(); return; }
+      if (drawerEdit && drawerEdit.classList.contains('is-open')) closeEditNav();
+    });
+  }
+  if (btnCloseE) btnCloseE.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); closeEditNav(); });
+  if (btnCancelE) btnCancelE.addEventListener('click', function(ev) { ev.preventDefault(); ev.stopPropagation(); closeEditNav(); });
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('openCreate') === '1') {
+    if (window.history && window.history.replaceState) window.history.replaceState({}, '', base);
+    openCreate();
+  } else if (drawerEdit && params.get('selectedPromocao')) {
+    openEdit();
+  }
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape') {
+      if (drawerCreate && drawerCreate.classList.contains('is-open')) closeCreate();
+      else if (drawerEdit && drawerEdit.classList.contains('is-open')) closeEditNav();
+    }
+  });
+})();
+</script>

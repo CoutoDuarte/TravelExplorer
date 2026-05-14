@@ -36,8 +36,8 @@ public class AlojamentoCRUD {
 		String sql = "SELECT * FROM ALOJAMENTO";
 
 		try (Connection conn = DBConnection.getConnection();
-				Statement stmt = conn.createStatement();
-				ResultSet rs = stmt.executeQuery(sql)) {
+				PreparedStatement stmt = conn.prepareStatement(sql);
+				ResultSet rs = stmt.executeQuery()) {
 
 			while (rs.next()) {
 				Alojamento alojamento = new Alojamento(
@@ -56,6 +56,50 @@ public class AlojamentoCRUD {
 		}
 
 		return alojamentos;
+	}
+
+	public List<Alojamento> findAll() {
+		return getAllAlojamento();
+	}
+
+	public boolean attachToPacote(int idPacote, int idAlojamento) {
+		String sql = "INSERT IGNORE INTO PACOTE_ALOJAMENTO (idPacote, idAlojamento) VALUES (?, ?)";
+		try (Connection conn = DBConnection.getConnection();
+				PreparedStatement stmt = conn.prepareStatement(sql)) {
+			stmt.setInt(1, idPacote);
+			stmt.setInt(2, idAlojamento);
+			return stmt.executeUpdate() > 0;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	public boolean detachFromPacote(int idPacote, int idAlojamento) {
+		String sql = "DELETE FROM PACOTE_ALOJAMENTO WHERE idPacote = ? AND idAlojamento = ?";
+		try (Connection conn = DBConnection.getConnection();
+				PreparedStatement stmt = conn.prepareStatement(sql)) {
+			stmt.setInt(1, idPacote);
+			stmt.setInt(2, idAlojamento);
+			stmt.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	public boolean deleteAllAlojamentosForPacote(int idPacote) {
+		String sql = "DELETE FROM PACOTE_ALOJAMENTO WHERE idPacote = ?";
+		try (Connection conn = DBConnection.getConnection();
+				PreparedStatement stmt = conn.prepareStatement(sql)) {
+			stmt.setInt(1, idPacote);
+			stmt.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 
 	public List<Alojamento> findByPacote(int idPacote) {

@@ -43,11 +43,11 @@ public class ReservaCRUD {
     // READ - todos
     public List<Reserva> getAllReservas() {
         List<Reserva> reservas = new ArrayList<>();
-        String sql = "SELECT * FROM RESERVA";
+        String sql = "SELECT * FROM RESERVA ORDER BY data_reserva DESC, idReserva DESC";
 
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 reservas.add(map(rs));
@@ -57,6 +57,51 @@ public class ReservaCRUD {
             e.printStackTrace();
         }
 
+        return reservas;
+    }
+
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM RESERVA";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int countAtivas() {
+        String sql = "SELECT COUNT(*) FROM RESERVA WHERE LOWER(estado) NOT IN ('cancelada', 'cancelado', 'concluída', 'concluida', 'finalizada', 'finalizado')";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public List<Reserva> findLatest(int limite) {
+        List<Reserva> reservas = new ArrayList<>();
+        String sql = "SELECT * FROM RESERVA ORDER BY data_reserva DESC, idReserva DESC LIMIT ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limite);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    reservas.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return reservas;
     }
 

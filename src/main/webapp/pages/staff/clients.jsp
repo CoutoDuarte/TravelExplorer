@@ -1,77 +1,107 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,Connection.Classes.Cliente,Connection.CRUD.ClienteCRUD" %>
+<%
+ClienteCRUD clienteCRUD = new ClienteCRUD();
+List<Cliente> clientes = clienteCRUD.findAll();
+String selCli = request.getParameter("selectedCliente");
+Cliente clienteSel = null;
+if (selCli != null && !selCli.trim().isEmpty()) {
+    try {
+        clienteSel = clienteCRUD.findById(Integer.parseInt(selCli.trim()));
+    } catch (NumberFormatException ignored) {
+    }
+}
+String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
+%>
 
-<div class="flow staff-shell">
+<div id="staffClientsRoot" class="staff-shell staff-offers-page" data-clients-base="<%= clientsBase %>">
+
+<div class="flow">
     <jsp:include page="/components/shared/page_header.jsp">
         <jsp:param name="eyebrow" value="Clientes" />
         <jsp:param name="heading" value="Gestão de clientes" />
-        <jsp:param name="description" value="Consulta rapidamente clientes registados, estados de acompanhamento e ações disponíveis." />
+        <jsp:param name="description" value="Lista de clientes registados na base de dados com contactos e resumo de reservas." />
     </jsp:include>
 
-    <div class="staff-dashboard-grid">
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">Ativo</span>
-                        <h2 style="font-size: 1.2rem;">Ana Silva</h2>
-                    </div>
-                    <span class="card__tag">CLI-101</span>
-                </div>
-
-                <p class="text-muted"><strong>Email:</strong> ana.silva@email.com</p>
-                <p class="text-muted"><strong>Telefone:</strong> 912345678</p>
-                <p class="text-muted"><strong>Última reserva:</strong> Maldivas Premium</p>
-                <p class="text-muted"><strong>Estado:</strong> Cliente com reservas ativas</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Ver ficha</a>
-                </div>
-            </div>
+    <div class="surface-block surface-block-lg staff-action-panel">
+        <% if (clientes == null || clientes.isEmpty()) { %>
+        <p class="text-muted">Ainda não existem clientes registados.</p>
+        <% } else { %>
+        <div class="staff-offers-table-wrap">
+            <table class="staff-offers-table">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Telemóvel</th>
+                        <th>NIF</th>
+                        <th>Última reserva</th>
+                        <th>Total reservas</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (Cliente c : clientes) {
+                        int nRes = clienteCRUD.countReservasByCliente(c.getIdCliente());
+                        String ultNome = clienteCRUD.findLatestReservaNameByCliente(c.getIdCliente());
+                        String ultTxt = ultNome != null && !ultNome.isEmpty() ? ultNome : "—";
+                    %>
+                    <tr>
+                        <td><strong><%= c.getNome() != null ? c.getNome() : "" %></strong></td>
+                        <td><%= c.getEmail() != null ? c.getEmail() : "" %></td>
+                        <td><%= c.getTelemovel() %></td>
+                        <td><%= c.getNIF() > 0 ? String.valueOf(c.getNIF()) : "—" %></td>
+                        <td><%= ultTxt %></td>
+                        <td><%= nRes %></td>
+                        <td><a class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;" href="<%= clientsBase %>&amp;selectedCliente=<%= c.getIdCliente() %>">Ver ficha</a></td>
+                    </tr>
+                    <% } %>
+                </tbody>
+            </table>
         </div>
-
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">Recente</span>
-                        <h2 style="font-size: 1.2rem;">João Costa</h2>
-                    </div>
-                    <span class="card__tag">CLI-102</span>
-                </div>
-
-                <p class="text-muted"><strong>Email:</strong> joao.costa@email.com</p>
-                <p class="text-muted"><strong>Telefone:</strong> 934567890</p>
-                <p class="text-muted"><strong>Última reserva:</strong> Roma Essencial</p>
-                <p class="text-muted"><strong>Estado:</strong> Acompanhamento em curso</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Ver ficha</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="surface-block staff-summary-card">
-            <div class="flow">
-                <div class="actions-row" style="justify-content: space-between; align-items: flex-start;">
-                    <div class="flow" style="gap: 0.45rem;">
-                        <span class="section-title__eyebrow">VIP</span>
-                        <h2 style="font-size: 1.2rem;">Marta Pereira</h2>
-                    </div>
-                    <span class="card__tag">CLI-103</span>
-                </div>
-
-                <p class="text-muted"><strong>Email:</strong> marta.pereira@email.com</p>
-                <p class="text-muted"><strong>Telefone:</strong> 965432187</p>
-                <p class="text-muted"><strong>Última reserva:</strong> Paris City Lights</p>
-                <p class="text-muted"><strong>Estado:</strong> Cliente frequente</p>
-
-                <div class="actions-row">
-                    <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Ver ficha</a>
-                </div>
-            </div>
-        </div>
+        <% } %>
     </div>
-
-    
-    
 </div>
+
+<% if (clienteSel != null) { %>
+<div id="staffClientsBackdrop" class="staff-drawer-backdrop is-open" aria-hidden="false"></div>
+<div id="staffClientsDrawer" class="staff-drawer is-open" aria-hidden="false">
+    <div class="staff-drawer__header">
+        <h2 class="staff-drawer__title">Cliente #<%= clienteSel.getIdCliente() %></h2>
+        <button type="button" class="staff-drawer__close" id="staffClientsClose" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="staff-drawer__body flow">
+        <p><strong>Nome:</strong> <%= clienteSel.getNome() != null ? clienteSel.getNome() : "" %></p>
+        <p><strong>Email:</strong> <%= clienteSel.getEmail() != null ? clienteSel.getEmail() : "" %></p>
+        <p><strong>Telemóvel:</strong> <%= clienteSel.getTelemovel() %></p>
+        <p><strong>NIF:</strong> <%= clienteSel.getNIF() > 0 ? String.valueOf(clienteSel.getNIF()) : "—" %></p>
+        <p><strong>Morada:</strong> <%= clienteSel.getMorada() != null ? clienteSel.getMorada() : "—" %></p>
+        <p><strong>Total de reservas:</strong> <%= clienteCRUD.countReservasByCliente(clienteSel.getIdCliente()) %></p>
+        <p><strong>Última reserva (pacote):</strong> <% String u = clienteCRUD.findLatestReservaNameByCliente(clienteSel.getIdCliente()); %><%= u != null && !u.isEmpty() ? u : "—" %></p>
+    </div>
+</div>
+<% } %>
+
+</div>
+
+<% if (clienteSel != null) { %>
+<script>
+(function() {
+  var base = document.getElementById('staffClientsRoot').getAttribute('data-clients-base') || '';
+  var backdrop = document.getElementById('staffClientsBackdrop');
+  var drawer = document.getElementById('staffClientsDrawer');
+  var btn = document.getElementById('staffClientsClose');
+  function closeAll() {
+    window.location.href = base;
+  }
+  if (backdrop) {
+    backdrop.addEventListener('click', function(ev) {
+      if (ev.target === backdrop) closeAll();
+    });
+  }
+  if (btn) btn.addEventListener('click', function(ev) { ev.preventDefault(); closeAll(); });
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape') closeAll();
+  });
+})();
+</script>
+<% } %>

@@ -21,6 +21,11 @@
                     </aside>
 
                     <section style="min-width: 0;">
+                        <% if ("no-permission".equals(request.getParameter("error"))) { %>
+                        <div class="surface-block surface-block-lg" style="margin-bottom: 1rem;">
+                            <p class="text-muted" style="color: #b42318;">Não tens permissão para aceder a esta área.</p>
+                        </div>
+                        <% } %>
                         <jsp:include page="${contentPage}" />
                     </section>
                 </div>

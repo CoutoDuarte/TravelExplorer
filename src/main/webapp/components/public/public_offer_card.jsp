@@ -26,7 +26,12 @@
 
         <div class="card__footer">
             <span class="card__price"><%= request.getParameter("price") != null ? request.getParameter("price") : "" %></span>
-            <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=offer-details">
+            <% String idPacoteCard = request.getParameter("idPacote");
+               String detailPage = "offer-details";
+               if (idPacoteCard != null && !idPacoteCard.trim().isEmpty()) {
+                   detailPage = "offer-details&idPacote=" + idPacoteCard.trim();
+               } %>
+            <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=<%= detailPage %>">
                 Ver detalhe
             </a>
         </div>

@@ -82,4 +82,42 @@ public class PermissaoCRUD {
             e.printStackTrace();
         }
     }
+
+    public List<Permissao> findByFuncionarioId(int idFuncionario) {
+        List<Permissao> lista = new ArrayList<>();
+        String sql = "SELECT DISTINCT p.idPermissao, p.nome, p.descricao FROM PERMISSAO p JOIN FUNCAO_PERMISSAO fp ON fp.idPermissao = p.idPermissao JOIN FUNCIONARIO_FUNCAO ff ON ff.idFuncao = fp.idFuncao WHERE ff.idFuncionario = ? ORDER BY p.nome ASC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idFuncionario);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(new Permissao(
+                        rs.getInt("idPermissao"),
+                        rs.getString("nome"),
+                        rs.getString("descricao")
+                    ));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return lista;
+    }
+
+    public boolean funcionarioHasPermission(int idFuncionario, String permissionName) {
+        String sql = "SELECT COUNT(*) FROM PERMISSAO p JOIN FUNCAO_PERMISSAO fp ON fp.idPermissao = p.idPermissao JOIN FUNCIONARIO_FUNCAO ff ON ff.idFuncao = fp.idFuncao WHERE ff.idFuncionario = ? AND p.nome = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idFuncionario);
+            stmt.setString(2, permissionName);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="Connection.Security.StaffAuth" %>
 <nav class="surface-block staff-sidebar" aria-label="Menu lateral da área staff">
     <div class="flow">
         <jsp:include page="/components/shared/page_header.jsp">
@@ -8,12 +8,27 @@
         </jsp:include>
 
         <div class="flow">
+            <% if (StaffAuth.hasPermission(request, "STAFF_DASHBOARD")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Dashboard</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_RESERVATIONS")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-reservations" href="${pageContext.request.contextPath}/index.jsp?page=staff-reservations">Reservas</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_CLIENTS")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-clients" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Clientes</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_OFFERS")) { %>
+            <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-offers" href="${pageContext.request.contextPath}/index.jsp?page=staff-offers">Ofertas e pacotes</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_PROMOTIONS")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-promotions" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Promoções</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_COMMUNICATION")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-communication" href="${pageContext.request.contextPath}/index.jsp?page=staff-communication">Comunicação</a>
+            <% } %>
+            <% if (StaffAuth.hasPermission(request, "STAFF_ADMIN")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-admin" href="${pageContext.request.contextPath}/index.jsp?page=staff-admin">Administração</a>
+            <% } %>
         </div>
     </div>
 

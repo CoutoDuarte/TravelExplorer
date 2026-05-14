@@ -56,8 +56,8 @@ public class ViagemCRUD {
         String sql = "SELECT * FROM VIAGENS";
 
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 lista.add(map(rs));
@@ -115,6 +115,46 @@ public class ViagemCRUD {
         }
 
         return lista;
+    }
+
+    public boolean attachToPacote(int idPacote, int idViagem) {
+        String sql = "INSERT IGNORE INTO PACOTE_VIAGENS (idPacote, idViagem) VALUES (?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.setInt(2, idViagem);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean detachFromPacote(int idPacote, int idViagem) {
+        String sql = "DELETE FROM PACOTE_VIAGENS WHERE idPacote = ? AND idViagem = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.setInt(2, idViagem);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean deleteAllViagensForPacote(int idPacote) {
+        String sql = "DELETE FROM PACOTE_VIAGENS WHERE idPacote = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     // UPDATE

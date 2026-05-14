@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.sql.Connection,java.sql.PreparedStatement,java.sql.ResultSet,Connection.DBConnection,org.mindrot.jbcrypt.BCrypt" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.sql.Connection,java.sql.PreparedStatement,java.sql.ResultSet,Connection.DBConnection,org.mindrot.jbcrypt.BCrypt,java.util.HashSet,java.util.Set,Connection.Classes.Funcionario,Connection.Classes.Permissao,Connection.CRUD.FuncionarioCRUD,Connection.CRUD.PermissaoCRUD" %>
 <%
 String loginErrorMessage = null;
 String loginEmailValue = "";
@@ -28,6 +28,7 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
                             session.setAttribute("userType", "cliente");
                             session.setAttribute("userId", rs.getInt("idCliente"));
                             session.setAttribute("userName", rs.getString("nome"));
+                            session.removeAttribute("staffPermissions");
 %>
 <script>
     window.location.replace("<%= request.getContextPath() %>/index.jsp?page=customer-dashboard");
@@ -38,36 +39,43 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
                     }
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            loginErrorMessage = "Erro técnico: " + e.getClass().getName() + " - " + e.getMessage();
+        }
 
-            String funcionarioQuery = "SELECT idFuncionario, nome, password_hash FROM FUNCIONARIO WHERE email = ?";
-
-            try (PreparedStatement stmt = conn.prepareStatement(funcionarioQuery)) {
-                stmt.setString(1, loginEmailValue);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        String passwordHash = rs.getString("password_hash");
-
-                        if (passwordHash != null && !passwordHash.trim().isEmpty() && BCrypt.checkpw(passwordValue, passwordHash)) {
-                            session.setAttribute("auth", true);
-                            session.setAttribute("userType", "staff");
-                            session.setAttribute("userId", rs.getInt("idFuncionario"));
-                            session.setAttribute("userName", rs.getString("nome"));
+        if (loginErrorMessage == null) {
+            try {
+                FuncionarioCRUD funcionarioCRUD = new FuncionarioCRUD();
+                Funcionario funcionario = funcionarioCRUD.findByEmail(loginEmailValue);
+                if (funcionario != null) {
+                    String passwordHash = funcionario.getPasswordHash();
+                    if (passwordHash != null && !passwordHash.trim().isEmpty() && BCrypt.checkpw(passwordValue, passwordHash)) {
+                        session.setAttribute("auth", true);
+                        session.setAttribute("userType", "staff");
+                        session.setAttribute("userId", funcionario.getIdFuncionario());
+                        session.setAttribute("userName", funcionario.getNome());
+                        Set<String> staffPermissions = new HashSet<>();
+                        PermissaoCRUD permissaoCRUD = new PermissaoCRUD();
+                        for (Permissao permissao : permissaoCRUD.findByFuncionarioId(funcionario.getIdFuncionario())) {
+                            if (permissao.getNome() != null) {
+                                staffPermissions.add(permissao.getNome());
+                            }
+                        }
+                        session.setAttribute("staffPermissions", staffPermissions);
 %>
 <script>
     window.location.replace("<%= request.getContextPath() %>/index.jsp?page=staff-dashboard");
 </script>
 <%
-                            return;
-                        }
+                        return;
                     }
                 }
+                loginErrorMessage = "Email ou palavra-passe inválidos.";
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                loginErrorMessage = "Erro técnico: " + ex.getClass().getName() + " - " + ex.getMessage();
             }
-
-            loginErrorMessage = "Email ou palavra-passe inválidos.";
-        } catch (Exception e) {
-            e.printStackTrace();
-            loginErrorMessage = "Erro técnico: " + e.getClass().getName() + " - " + e.getMessage();
         }
     }
 }

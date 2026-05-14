@@ -4,6 +4,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.mindrot.jbcrypt.BCrypt;
+
 import Connection.DBConnection;
 import Connection.Classes.Funcionario;
 
@@ -162,6 +164,66 @@ public class FuncionarioCRUD {
 
     public boolean delete(Funcionario funcionario) {
         return delete(funcionario.getIdFuncionario());
+    }
+
+    public boolean createStaffWithRole(Funcionario funcionario, String plainPassword, int idFuncao) {
+        if (plainPassword == null || plainPassword.isEmpty()) {
+            return false;
+        }
+        if (findByEmail(funcionario.getEmail()) != null) {
+            return false;
+        }
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+            int nextId;
+            try (PreparedStatement st = conn.prepareStatement("SELECT COALESCE(MAX(idFuncionario), 0) + 1 FROM FUNCIONARIO");
+                 ResultSet rs = st.executeQuery()) {
+                if (!rs.next()) {
+                    conn.rollback();
+                    return false;
+                }
+                nextId = rs.getInt(1);
+            }
+            String hash = BCrypt.hashpw(plainPassword, BCrypt.gensalt());
+            String sql = "INSERT INTO FUNCIONARIO (idFuncionario, nome, email, telefone, salario, password_hash) VALUES (?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ins = conn.prepareStatement(sql)) {
+                ins.setInt(1, nextId);
+                ins.setString(2, funcionario.getNome());
+                ins.setString(3, funcionario.getEmail());
+                ins.setInt(4, funcionario.getTelemovel());
+                ins.setFloat(5, funcionario.getSalario());
+                ins.setString(6, hash);
+                ins.executeUpdate();
+            }
+            try (PreparedStatement insFf = conn.prepareStatement("INSERT INTO FUNCIONARIO_FUNCAO (idFuncionario, idFuncao) VALUES (?, ?)")) {
+                insFf.setInt(1, nextId);
+                insFf.setInt(2, idFuncao);
+                insFf.executeUpdate();
+            }
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     // Mapper privado

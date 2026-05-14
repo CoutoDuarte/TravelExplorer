@@ -1,4 +1,12 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,Connection.Classes.Pacote,Connection.CRUD.PacoteCRUD" %>
+<%
+PacoteCRUD pacoteCRUDPublic = new PacoteCRUD();
+List<Pacote> listaOfertas = pacoteCRUDPublic.findAll();
+java.text.DecimalFormatSymbols symO = new java.text.DecimalFormatSymbols(java.util.Locale.forLanguageTag("pt-PT"));
+symO.setDecimalSeparator(',');
+symO.setGroupingSeparator(' ');
+java.text.DecimalFormat dfOferta = new java.text.DecimalFormat("#,##0.00", symO);
+%>
 
 <div class="public-page">
     <section class="public-page__section public-page__section--soft">
@@ -6,7 +14,7 @@
             <jsp:include page="/components/shared/section_title.jsp">
                 <jsp:param name="eyebrow" value="Ofertas" />
                 <jsp:param name="heading" value="Encontra a oferta certa para a tua próxima viagem" />
-                <jsp:param name="description" value="Explora uma seleção inicial de ofertas públicas com vários estilos de viagem, destinos e preços. Esta página será ligada mais tarde ao sistema real de pesquisa." />
+                <jsp:param name="description" value="Explora os pacotes disponíveis publicados pela agência. Os preços base e as condições gerais são indicados em cada cartão." />
             </jsp:include>
 
             <div class="public-search-box" style="margin-top: 2rem;">
@@ -49,61 +57,51 @@
 
     <section class="public-page__section public-page__section--soft">
         <div class="container">
+            <% if (listaOfertas == null || listaOfertas.isEmpty()) { %>
+            <p class="text-muted">Sem ofertas disponíveis de momento.</p>
+            <% } else { %>
             <div class="cards-grid">
-                <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-1.jpg" />
-                    <jsp:param name="alt" value="Praia tropical com bangalôs sobre a água" />
-                    <jsp:param name="tag1" value="Praia" />
-                    <jsp:param name="tag2" value="7 noites" />
-                    <jsp:param name="title" value="Maldivas Premium" />
-                    <jsp:param name="origin" value="Porto" />
-                    <jsp:param name="destination" value="Maldivas" />
-                    <jsp:param name="extra" value="Transfer incluído" />
-                    <jsp:param name="description" value="Uma viagem focada em descanso, mar cristalino e uma experiência exclusiva." />
-                    <jsp:param name="price" value="Desde 1.250€" />
-                </jsp:include>
-
-                <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-2.jpg" />
-                    <jsp:param name="alt" value="Vista urbana europeia com edifícios históricos" />
-                    <jsp:param name="tag1" value="Cidade" />
-                    <jsp:param name="tag2" value="4 noites" />
-                    <jsp:param name="title" value="Roma Essencial" />
-                    <jsp:param name="origin" value="Lisboa" />
-                    <jsp:param name="destination" value="Roma" />
-                    <jsp:param name="extra" value="Hotel central" />
-                    <jsp:param name="description" value="Ideal para descobrir monumentos, gastronomia e o lado clássico da cidade." />
-                    <jsp:param name="price" value="Desde 720€" />
-                </jsp:include>
-
-                <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-3.jpg" />
-                    <jsp:param name="alt" value="Paisagem natural de montanha com lago" />
-                    <jsp:param name="tag1" value="Natureza" />
-                    <jsp:param name="tag2" value="5 noites" />
-                    <jsp:param name="title" value="Suíça Escape" />
-                    <jsp:param name="origin" value="Madrid" />
-                    <jsp:param name="destination" value="Zurique" />
-                    <jsp:param name="extra" value="Paisagens alpinas" />
-                    <jsp:param name="description" value="Uma opção perfeita para quem procura tranquilidade, vistas incríveis e ar puro." />
-                    <jsp:param name="price" value="Desde 940€" />
-                </jsp:include>
-
-                <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-4.jpg" />
-                    <jsp:param name="alt" value="Praia e cidade costeira ao pôr do sol" />
-                    <jsp:param name="tag1" value="Verão" />
-                    <jsp:param name="tag2" value="6 noites" />
-                    <jsp:param name="title" value="Dubrovnik Sun Trip" />
-                    <jsp:param name="origin" value="Porto" />
-                    <jsp:param name="destination" value="Croácia" />
-                    <jsp:param name="extra" value="Pequeno-almoço" />
-                    <jsp:param name="description" value="Sol, mar e uma cidade costeira cheia de charme para umas férias completas." />
-                    <jsp:param name="price" value="Desde 810€" />
-                </jsp:include>
-
-                
+                <% for (Pacote op : listaOfertas) {
+                    int imgN = (op.getIdPacote() % 4) + 1;
+                    String imgPath = "/assets/img/offers/offer-" + imgN + ".jpg";
+                    String titulo = op.getNome() != null ? op.getNome() : "Pacote";
+                    String desc = op.getDescricao() != null ? op.getDescricao() : "";
+                    if (desc.length() > 160) {
+                        desc = desc.substring(0, 160) + "…";
+                    }
+                    String precoTxt = "Desde " + dfOferta.format(op.getPrecoBase()) + " €";
+                    String tag2 = op.getNumAdultos() + " adultos";
+                    if (op.getNumCriancas() > 0) {
+                        tag2 = tag2 + ", " + op.getNumCriancas() + " crianças";
+                    }
+                    String extraRef = "Ref. " + op.getIdPacote();
+                    String detailHref = "offer-details&idPacote=" + op.getIdPacote();
+                %>
+                <article class="card">
+                    <div class="card__media">
+                        <img src="${pageContext.request.contextPath}<%= imgPath %>" alt="<%= titulo.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;") %>">
+                    </div>
+                    <div class="card__body">
+                        <div class="card__meta">
+                            <span class="card__tag">Pacote</span>
+                            <span class="card__tag"><%= tag2 %></span>
+                        </div>
+                        <h3 class="card__title"><%= titulo %></h3>
+                        <div class="offer-card__meta-line">
+                            <span>—</span>
+                            <span>—</span>
+                            <span><%= extraRef %></span>
+                        </div>
+                        <p class="offer-card__description"><%= desc %></p>
+                        <div class="card__footer">
+                            <span class="card__price"><%= precoTxt %></span>
+                            <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=<%= detailHref %>">Ver detalhe</a>
+                        </div>
+                    </div>
+                </article>
+                <% } %>
             </div>
+            <% } %>
         </div>
     </section>
 </div>

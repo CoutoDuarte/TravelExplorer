@@ -9,7 +9,28 @@ import Connection.Classes.Pacote;
 
 public class PacoteCRUD {
 
-    // CREATE
+    private void setIdReserva(PreparedStatement stmt, int index, int idReserva) throws SQLException {
+        if (idReserva <= 0) {
+            stmt.setNull(index, Types.INTEGER);
+        } else {
+            stmt.setInt(index, idReserva);
+        }
+    }
+
+    public int getNextId() {
+        String sql = "SELECT COALESCE(MAX(idPacote), 0) + 1 FROM PACOTE";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 1;
+    }
+
     public boolean insert(Pacote pacote) {
         String sql = "INSERT INTO PACOTE (idPacote, descricao, nome, preco_base, "
                    + "numero_pessoas_adultas, numero_criancas, idReserva) "
@@ -24,7 +45,7 @@ public class PacoteCRUD {
             stmt.setFloat(4, pacote.getPrecoBase());
             stmt.setInt(5, pacote.getNumAdultos());
             stmt.setInt(6, pacote.getNumCriancas());
-            stmt.setInt(7, pacote.getIdReserva());
+            setIdReserva(stmt, 7, pacote.getIdReserva());
 
             int rows = stmt.executeUpdate();
             System.out.println("Pacote inserted successfully!");
@@ -36,14 +57,32 @@ public class PacoteCRUD {
         }
     }
 
-    // READ - todos
+    public boolean create(Pacote pacote) {
+        int id = getNextId();
+        Pacote row = new Pacote(
+            id,
+            pacote.getDescricao(),
+            pacote.getNome(),
+            pacote.getPrecoBase(),
+            pacote.getNumAdultos(),
+            pacote.getNumCriancas(),
+            pacote.getIdReserva()
+        );
+        return insert(row);
+    }
+
     public List<Pacote> getAllPacotes() {
+        return findAll();
+    }
+
+    public List<Pacote> findAll() {
         List<Pacote> pacotes = new ArrayList<>();
-        String sql = "SELECT * FROM PACOTE";
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "
+                   + "FROM PACOTE ORDER BY idPacote DESC";
 
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 pacotes.add(map(rs));
@@ -56,13 +95,9 @@ public class PacoteCRUD {
         return pacotes;
     }
 
-    public List<Pacote> findAll() {
-        return getAllPacotes();
-    }
-
-    // READ - por ID
     public Pacote findById(int id) {
-        String sql = "SELECT * FROM PACOTE WHERE idPacote = ?";
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "
+                   + "FROM PACOTE WHERE idPacote = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -82,7 +117,8 @@ public class PacoteCRUD {
     }
 
     public Pacote findByReserva(int idReserva) {
-        String sql = "SELECT * FROM PACOTE WHERE idReserva = ? LIMIT 1";
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "
+                   + "FROM PACOTE WHERE idReserva = ? LIMIT 1";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -101,7 +137,6 @@ public class PacoteCRUD {
         return null;
     }
 
-    // UPDATE
     public boolean update(Pacote pacote) {
         String sql = "UPDATE PACOTE SET descricao = ?, nome = ?, preco_base = ?, "
                    + "numero_pessoas_adultas = ?, numero_criancas = ?, idReserva = ? "
@@ -115,7 +150,7 @@ public class PacoteCRUD {
             stmt.setFloat(3, pacote.getPrecoBase());
             stmt.setInt(4, pacote.getNumAdultos());
             stmt.setInt(5, pacote.getNumCriancas());
-            stmt.setInt(6, pacote.getIdReserva());
+            setIdReserva(stmt, 6, pacote.getIdReserva());
             stmt.setInt(7, pacote.getIdPacote());
 
             int rows = stmt.executeUpdate();
@@ -128,7 +163,6 @@ public class PacoteCRUD {
         }
     }
 
-    // DELETE - por ID
     public boolean delete(int id) {
         String sql = "DELETE FROM PACOTE WHERE idPacote = ?";
 
@@ -146,12 +180,33 @@ public class PacoteCRUD {
         }
     }
 
+    public boolean deleteById(int idPacote) {
+        return delete(idPacote);
+    }
+
     public boolean delete(Pacote pacote) {
         return delete(pacote.getIdPacote());
     }
 
-    // Mapper privado
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM PACOTE";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
     private Pacote map(ResultSet rs) throws SQLException {
+        int idReserva = rs.getInt("idReserva");
+        if (rs.wasNull()) {
+            idReserva = 0;
+        }
         return new Pacote(
             rs.getInt("idPacote"),
             rs.getString("descricao"),
@@ -159,7 +214,7 @@ public class PacoteCRUD {
             rs.getFloat("preco_base"),
             rs.getInt("numero_pessoas_adultas"),
             rs.getInt("numero_criancas"),
-            rs.getInt("idReserva")
+            idReserva
         );
     }
 }

@@ -1,18 +1,28 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="Connection.CRUD.ClienteCRUD,Connection.CRUD.ReservaCRUD,Connection.CRUD.PacoteCRUD,Connection.CRUD.PromocaoCRUD" %>
+<%
+ClienteCRUD clienteCRUDDash = new ClienteCRUD();
+ReservaCRUD reservaCRUDDash = new ReservaCRUD();
+PacoteCRUD pacoteCRUDDash = new PacoteCRUD();
+PromocaoCRUD promocaoCRUDDash = new PromocaoCRUD();
+int cntReservasAtivas = reservaCRUDDash.countAtivas();
+int cntClientes = clienteCRUDDash.countAll();
+int cntPacotes = pacoteCRUDDash.countAll();
+int cntPromoAtivas = promocaoCRUDDash.countAtivas();
+%>
 
 <div class="flow staff-shell">
     <jsp:include page="/components/shared/page_header.jsp">
         <jsp:param name="eyebrow" value="Dashboard" />
         <jsp:param name="heading" value="Painel principal da área staff" />
-        <jsp:param name="description" value="Acompanha rapidamente o estado geral da plataforma, reservas, clientes e ações prioritárias." />
+        <jsp:param name="description" value="Indicadores em tempo real com base nos registos da base de dados." />
     </jsp:include>
 
     <div class="staff-dashboard-grid">
         <div class="surface-block staff-summary-card">
             <div class="flow">
                 <span class="section-title__eyebrow">Reservas</span>
-                <h2 style="font-size: 1.25rem;">18 reservas ativas</h2>
-                <p class="text-muted">Consulta rapidamente o volume atual de reservas em processamento.</p>
+                <h2 style="font-size: 1.25rem;"><%= cntReservasAtivas %> reservas ativas</h2>
+                <p class="text-muted">Reservas que não estão canceladas, concluídas ou finalizadas.</p>
                 <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-reservations">Ver reservas</a>
             </div>
         </div>
@@ -20,39 +30,28 @@
         <div class="surface-block staff-summary-card">
             <div class="flow">
                 <span class="section-title__eyebrow">Clientes</span>
-                <h2 style="font-size: 1.25rem;">246 clientes registados</h2>
-                <p class="text-muted">Acompanha o crescimento da base de clientes e os contactos principais.</p>
+                <h2 style="font-size: 1.25rem;"><%= cntClientes %> clientes registados</h2>
+                <p class="text-muted">Total de contas de cliente na plataforma.</p>
                 <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Ver clientes</a>
             </div>
         </div>
 
         <div class="surface-block staff-summary-card">
             <div class="flow">
+                <span class="section-title__eyebrow">Ofertas</span>
+                <h2 style="font-size: 1.25rem;"><%= cntPacotes %> pacotes</h2>
+                <p class="text-muted">Ofertas e pacotes comerciais disponíveis para gestão.</p>
+                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-offers">Ver ofertas e pacotes</a>
+            </div>
+        </div>
+
+        <div class="surface-block staff-summary-card">
+            <div class="flow">
                 <span class="section-title__eyebrow">Promoções</span>
-                <h2 style="font-size: 1.25rem;">6 campanhas ativas</h2>
-                <p class="text-muted">Revê rapidamente as promoções publicadas e ações comerciais em curso.</p>
+                <h2 style="font-size: 1.25rem;"><%= cntPromoAtivas %> promoções ativas</h2>
+                <p class="text-muted">Campanhas com estado ativo ou publicado.</p>
                 <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Ver promoções</a>
             </div>
         </div>
     </div>
-
-    <div class="surface-block surface-block-lg staff-action-panel">
-        <div class="flow">
-            <jsp:include page="/components/shared/section_title.jsp">
-                <jsp:param name="eyebrow" value="Ações rápidas" />
-                <jsp:param name="heading" value="Atalhos para as tarefas mais importantes" />
-                <jsp:param name="description" value="Esta área poderá mais tarde concentrar atalhos operacionais e alertas importantes para o staff." />
-            </jsp:include>
-
-            <div class="actions-row">
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/index.jsp?page=staff-reservations">Nova reserva</a>
-                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Novo cliente</a>
-                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Nova promoção</a>
-                <a class="btn btn-ghost" href="${pageContext.request.contextPath}/index.jsp?page=offers">Ver área pública</a>
-            </div>
-        </div>
-    </div>
-
-    
-    
 </div>

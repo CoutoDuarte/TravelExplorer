@@ -56,8 +56,8 @@ public class ClienteCRUD {
         String sql = "SELECT * FROM CLIENTE";
 
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
                 clientes.add(map(rs));
@@ -68,6 +68,52 @@ public class ClienteCRUD {
         }
 
         return clientes;
+    }
+
+    public int countAll() {
+        String sql = "SELECT COUNT(*) FROM CLIENTE";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public int countReservasByCliente(int idCliente) {
+        String sql = "SELECT COUNT(*) FROM RESERVA WHERE idCliente = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public String findLatestReservaNameByCliente(int idCliente) {
+        String sql = "SELECT p.nome FROM RESERVA r JOIN PACOTE p ON p.idPacote = r.idPacote WHERE r.idCliente = ? ORDER BY r.data_reserva DESC, r.idReserva DESC LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idCliente);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("nome");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     // Alias para compatibilidade com o servlet (que chama findAll())

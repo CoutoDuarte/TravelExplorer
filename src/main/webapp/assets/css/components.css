@@ -9,6 +9,18 @@
   gap: 1.5rem;
 }
 
+.public-navbar__inner--balanced {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem 1.5rem;
+}
+
+.public-navbar__links--center {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .public-navbar__brand {
   display: inline-flex;
   align-items: center;
@@ -107,6 +119,22 @@
 .section-title__description {
   max-width: 62ch;
   color: rgba(34, 56, 67, 0.78);
+}
+
+.section-title--home-ideas {
+  gap: 0.35rem;
+}
+
+.section-title--home-ideas .section-title__heading {
+  max-width: none;
+  font-size: clamp(1.3rem, 2.2vw, 1.75rem);
+  letter-spacing: -0.02em;
+}
+
+.section-title--home-ideas .section-title__description {
+  max-width: none;
+  font-size: 0.93rem;
+  line-height: 1.45;
 }
 
 .empty-state {
@@ -209,6 +237,30 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.card__media img.is-hidden {
+  display: none;
+}
+
+.card__media--gradient {
+  aspect-ratio: 16 / 10;
+}
+
+.card__media--gradient-1 {
+  background: linear-gradient(135deg, #d77a61 0%, #223843 100%);
+}
+
+.card__media--gradient-2 {
+  background: linear-gradient(135deg, #c4a484 0%, #2f4858 100%);
+}
+
+.card__media--gradient-3 {
+  background: linear-gradient(135deg, #8fa6b8 0%, #223843 100%);
+}
+
+.card__media--gradient-fallback {
+  background: linear-gradient(135deg, #e8b89d 0%, #3d5a6c 100%);
 }
 
 .card__body {

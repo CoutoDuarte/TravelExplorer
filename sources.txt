@@ -1,3 +1,4 @@
+src/main/java/ExternalAPI/HotelsClient.java
 src/main/java/ExternalAPI/OpenAIClient.java
 src/main/java/ExternalAPI/ApiConfig.java
 src/main/java/ExternalAPI/FlightsClient.java
@@ -8,7 +9,9 @@ src/main/java/Connection/Classes/Transporte.java
 src/main/java/Connection/Classes/Viagens.java
 src/main/java/Connection/Classes/Permissao.java
 src/main/java/Connection/Classes/PesquisaRequest.java
+src/main/java/Connection/Classes/FlightsSearchResult.java
 src/main/java/Connection/Classes/Reserva.java
+src/main/java/Connection/Classes/SugestaoViagem.java
 src/main/java/Connection/Classes/Pagamento.java
 src/main/java/Connection/Classes/Funcionario.java
 src/main/java/Connection/Classes/TransferInfo.java
@@ -20,6 +23,7 @@ src/main/java/Connection/Classes/VooInfo.java
 src/main/java/Connection/Classes/PesquisaResultado.java
 src/main/java/Connection/Classes/Alojamento.java
 src/main/java/Connection/Classes/AlojamentoSugerido.java
+src/main/java/Connection/Classes/HotelSugestao.java
 src/main/java/Connection/Servlets/JsonUtil.java
 src/main/java/Connection/Servlets/PagamentoServlet.java
 src/main/java/Connection/Servlets/FuncionarioServlet.java

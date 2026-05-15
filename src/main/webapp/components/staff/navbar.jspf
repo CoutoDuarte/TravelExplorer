@@ -7,13 +7,10 @@
         </a>
 
         <div class="public-navbar__actions">
-            <span class="text-muted staff-navbar-note">Área staff</span>
-            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Ver área pública</a>
+            <a class="btn btn-ghost staff-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
+            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
+            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Área staff</a>
             <a class="btn btn-secondary staff-navbar__link" data-staff-nav-page="logout" href="${pageContext.request.contextPath}/index.jsp?page=logout">Terminar sessão</a>
         </div>
     </div>
-
-    
-    
-    
 </nav>

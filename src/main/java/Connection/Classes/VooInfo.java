@@ -2,9 +2,14 @@ package Connection.Classes;
 
 public class VooInfo {
     public String companhia;
-    public String partida;     // hora
+    public String numeroVoo;
+    public String origem;
+    public String destino;
+    public String aeroportoOrigem;
+    public String aeroportoDestino;
+    public String partida;
     public String chegada;
-    public int    duracaoMin;
-    public float  preco;       // total
-    public String moeda;
+    public String duracao;
+    public double precoPorPessoa;
+    public double precoTotal;
 }

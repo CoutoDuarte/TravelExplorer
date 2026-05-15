@@ -1,9 +1,21 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<% String go = request.getParameter("gradientOnly");
+   boolean gradientOnly = "true".equals(go);
+   String gsRaw = request.getParameter("gradientSeed") != null ? request.getParameter("gradientSeed").trim() : "1";
+   String gSeed = "1";
+   if ("2".equals(gsRaw)) gSeed = "2";
+   else if ("3".equals(gsRaw)) gSeed = "3";
+   String img = request.getParameter("image");
+   boolean hasImg = img != null && !img.trim().isEmpty();
+   boolean useGradientBlock = gradientOnly || !hasImg; %>
 <article class="card">
-    <div class="card__media">
+    <div class="card__media<% if (useGradientBlock) { %> card__media--gradient card__media--gradient-<%= gSeed %><% } %>">
+        <% if (!useGradientBlock) { %>
         <img
-            src="${pageContext.request.contextPath}<%= request.getParameter("image") != null ? request.getParameter("image") : "" %>"
-            alt="<%= request.getParameter("alt") != null ? request.getParameter("alt") : "" %>">
+            src="${pageContext.request.contextPath}<%= img %>"
+            alt="<%= request.getParameter("alt") != null ? request.getParameter("alt") : "" %>"
+            onerror="this.classList.add('is-hidden'); this.parentElement.classList.add('card__media--gradient-fallback');">
+        <% } %>
     </div>
 
     <div class="card__body">

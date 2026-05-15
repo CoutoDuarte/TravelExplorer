@@ -1,37 +1,104 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-<div class="public-search-box">
-    <form class="public-search-box__form" action="#" method="get">
-        <div class="public-search-box__field">
-            <label class="public-search-box__label" for="origin">Origem</label>
-            <input class="public-search-box__control" type="text" id="origin" name="origin" placeholder="Ex.: Porto">
+<%
+boolean clienteLoggedIn = Boolean.TRUE.equals(session.getAttribute("auth"))
+        && "cliente".equals(session.getAttribute("userType"));
+String loginUrl = request.getContextPath() + "/index.jsp?page=login";
+%>
+<div class="hero-studio__search-wrap" id="public-search-wrap">
+<div class="public-search-box te-search" id="public-search-box">
+    <form
+        class="public-search-box__form te-search__form"
+        id="public-travel-search-form"
+        action="#"
+        method="get"
+        data-api-url="${pageContext.request.contextPath}/pesquisar"
+        data-cliente-logged-in="<%= clienteLoggedIn %>"
+        data-login-url="<%= loginUrl %>"
+        novalidate>
+        <div class="te-search__field te-airport-field" data-airport-field="origem">
+            <label class="public-search-box__label" for="origem-display">Origem</label>
+            <div class="te-airport-field__wrap">
+                <input class="public-search-box__control te-airport-field__input" type="text" id="origem-display" placeholder="Cidade ou aeroporto" autocomplete="off" required>
+                <input type="hidden" id="origem" name="origem" value="">
+                <div class="te-airport-dropdown" id="origem-dropdown" hidden></div>
+            </div>
         </div>
 
-        <div class="public-search-box__field">
-            <label class="public-search-box__label" for="destination">Destino</label>
-            <input class="public-search-box__control" type="text" id="destination" name="destination" placeholder="Ex.: Paris">
+        <div class="te-search__field te-airport-field" data-airport-field="destino">
+            <label class="public-search-box__label" for="destino-display">Destino</label>
+            <div class="te-airport-field__wrap">
+                <input class="public-search-box__control te-airport-field__input" type="text" id="destino-display" placeholder="Cidade ou aeroporto" autocomplete="off" required>
+                <input type="hidden" id="destino" name="destino" value="">
+                <div class="te-airport-dropdown" id="destino-dropdown" hidden></div>
+            </div>
         </div>
 
-        <div class="public-search-box__field">
-            <label class="public-search-box__label" for="departureDate">Data</label>
-            <input class="public-search-box__control" type="date" id="departureDate" name="departureDate">
+        <div class="te-search__field">
+            <label class="public-search-box__label" for="data_partida">Data de partida</label>
+            <input class="public-search-box__control" type="date" id="data_partida" name="data_partida" required>
         </div>
 
-        <div class="public-search-box__field">
-            <label class="public-search-box__label" for="travellers">Viajantes</label>
-            <select class="public-search-box__control" id="travellers" name="travellers">
-                <option value="">Selecionar</option>
-                <option value="1">1 viajante - Solo</option>
-                <option value="2">2 viajantes - Casal</option>
-                <option value="3">3 viajantes</option>
-                <option value="4">4 viajantes</option>
-                <option value="family">Família / grupo</option>
-            </select>
+        <div class="te-search__field">
+            <label class="public-search-box__label" for="data_regresso">Data de regresso</label>
+            <input class="public-search-box__control" type="date" id="data_regresso" name="data_regresso" required>
         </div>
 
-        <button class="btn btn-accent public-search-box__action" type="submit">
+        <div class="te-search__field te-passenger-field">
+            <label class="public-search-box__label" for="passenger-trigger">Passageiros</label>
+            <div class="te-passenger-field__wrap">
+                <button class="public-search-box__control te-passenger-trigger" type="button" id="passenger-trigger" aria-expanded="false">
+                    2 passageiros
+                </button>
+                <input type="hidden" id="adultos" name="adultos" value="2">
+                <input type="hidden" id="criancas" name="criancas" value="0">
+                <div class="te-passenger-panel" id="passenger-panel" hidden>
+                    <div class="te-passenger-row">
+                        <div>
+                            <strong>Adultos</strong>
+                            <span>Mais de 12 anos</span>
+                        </div>
+                        <div class="te-passenger-stepper">
+                            <button type="button" class="te-passenger-stepper__btn" data-passenger-action="adultos-minus" aria-label="Menos adultos">−</button>
+                            <span class="te-passenger-stepper__value" id="adultos-count">2</span>
+                            <button type="button" class="te-passenger-stepper__btn" data-passenger-action="adultos-plus" aria-label="Mais adultos">+</button>
+                        </div>
+                    </div>
+                    <div class="te-passenger-row">
+                        <div>
+                            <strong>Crianças</strong>
+                            <span>2 a 11 anos</span>
+                        </div>
+                        <div class="te-passenger-stepper">
+                            <button type="button" class="te-passenger-stepper__btn" data-passenger-action="criancas-minus" aria-label="Menos crianças">−</button>
+                            <span class="te-passenger-stepper__value" id="criancas-count">0</span>
+                            <button type="button" class="te-passenger-stepper__btn" data-passenger-action="criancas-plus" aria-label="Mais crianças">+</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary te-passenger-panel__done" id="passenger-done">Concluir</button>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-accent public-search-box__action te-search__submit" type="submit" id="public-search-submit">
             Pesquisar
         </button>
-
-        
     </form>
+
+    <div class="public-search-login" id="public-search-login-required" hidden>
+        <p class="public-search-login__text">Para pesquisar e guardar viagens, precisa de iniciar sessão como cliente.</p>
+        <a class="btn btn-primary" href="<%= loginUrl %>">Iniciar sessão</a>
+    </div>
+
+    <div class="public-search-status" id="public-search-loading" hidden>
+        <span class="public-search-status__spinner" aria-hidden="true"></span>
+        <p class="public-search-status__text">A procurar as melhores opções para a sua viagem...</p>
+    </div>
+
+    <div class="public-search-alert" id="public-search-error" role="alert" hidden>
+        Não foi possível concluir a pesquisa neste momento. Tente novamente daqui a pouco.
+    </div>
+
 </div>
+</div>
+
+<section class="te-booking-panel" id="public-search-results" hidden aria-live="polite"></section>

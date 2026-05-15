@@ -1,89 +1,61 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
-
+<%
+boolean homeAuth = Boolean.TRUE.equals(session.getAttribute("auth"));
+String homeUserType = session.getAttribute("userType") != null ? String.valueOf(session.getAttribute("userType")) : "";
+boolean homeCliente = homeAuth && "cliente".equals(homeUserType);
+boolean homeStaff = homeAuth && "staff".equals(homeUserType);
+String homeCtx = request.getContextPath();
+%>
 <div class="public-page">
-    <section class="public-page__section public-page__section--hero">
-        <div class="container">
-            <div class="public-hero">
-                <div class="public-hero__content">
+    <section class="public-page__section public-page__section--hero hero-studio" id="hero-studio">
+        <div class="container hero-studio__container">
+            <div class="hero-studio__top">
+                <div class="hero-studio__copy">
                     <span class="public-hero__eyebrow">Explora o mundo com confiança</span>
-
-                    <h1 class="public-hero__title">
+                    <h1 class="public-hero__title hero-studio__title">
                         Encontra a tua próxima viagem com o TravelExplorer
                     </h1>
-
-                    <p class="public-hero__text">
-                        Descobre ofertas, compara destinos e encontra pacotes pensados para férias,
-                        escapadinhas ou viagens especiais, tudo numa experiência simples e moderna.
+                    <p class="public-hero__text hero-studio__text">
+                        Descobre destinos, compara voos e escolhe o alojamento ideal numa experiência
+                        pensada para viajar com calma e estilo.
                     </p>
-
                     <div class="public-hero__actions">
-                        <a class="btn btn-primary" href="${pageContext.request.contextPath}/index.jsp?page=offers">
+                        <a class="btn btn-primary" href="<%= homeCtx %>/index.jsp?page=offers">
                             Ver ofertas
                         </a>
-                        <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=register">
-                            Criar conta
-                        </a>
+                        <% if (homeCliente) { %>
+                        <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=customer-dashboard">Área de cliente</a>
+                        <% } else if (homeStaff) { %>
+                        <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=staff-dashboard">Área staff</a>
+                        <% } else { %>
+                        <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=register">Criar conta</a>
+                        <% } %>
                     </div>
-
-                    <div class="public-hero__highlights">
+                    <div class="public-hero__highlights hero-studio__highlights">
                         <span class="public-hero__highlight">Ofertas selecionadas</span>
                         <span class="public-hero__highlight">Destinos populares</span>
                         <span class="public-hero__highlight">Pacotes flexíveis</span>
                     </div>
-
-                    <%@ include file="/components/public/public_hero_search.jspf" %>
-                </div>
-
-                <div class="public-hero__media">
-                    <div class="public-hero__image"></div>
-
-                    <div class="public-hero__floating-card">
-                        <span class="public-hero__floating-label">Em destaque</span>
-                        <div class="public-hero__floating-title">Escapadinha em Santorini</div>
-                        <p class="public-hero__floating-text">
-                            Uma sugestão visual de campanha para dar vida à homepage pública.
-                        </p>
-                    </div>
                 </div>
             </div>
+
+            <%@ include file="/components/public/public_hero_search.jspf" %>
         </div>
     </section>
 
-    <section class="public-page__section public-page__section--soft">
-        <div class="container">
-            <div class="public-stats">
-                <div class="public-stat">
-                    <div class="public-stat__value">120+</div>
-                    <div class="public-stat__label">Destinos disponíveis</div>
-                </div>
-
-                <div class="public-stat">
-                    <div class="public-stat__value">350+</div>
-                    <div class="public-stat__label">Ofertas ativas</div>
-                </div>
-
-                <div class="public-stat">
-                    <div class="public-stat__value">24/7</div>
-                    <div class="public-stat__label">Experiência sempre acessível</div>
-                </div>
-
-                
-            </div>
-        </div>
-    </section>
-
-    <section class="public-page__section public-page__section--soft">
+    <section class="public-page__section public-page__section--soft home-ideas">
         <div class="container">
             <jsp:include page="/components/shared/section_title.jsp">
                 <jsp:param name="eyebrow" value="Ofertas em destaque" />
                 <jsp:param name="heading" value="Ideias de viagem para começar já a explorar" />
-                <jsp:param name="description" value="Uma seleção inicial de cartões estáticos para representar as futuras ofertas públicas da plataforma." />
+                <jsp:param name="description" value="Inspira-te com alguns dos destinos mais procurados." />
+                <jsp:param name="extraClass" value="section-title--home-ideas" />
             </jsp:include>
 
-            <div class="cards-grid" style="margin-top: 2rem;">
+            <div class="cards-grid home-ideas__grid">
                 <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-1.jpg" />
-                    <jsp:param name="alt" value="Praia tropical com mar azul" />
+                    <jsp:param name="gradientOnly" value="true" />
+                    <jsp:param name="gradientSeed" value="1" />
                     <jsp:param name="tag1" value="Praia" />
                     <jsp:param name="tag2" value="7 dias" />
                     <jsp:param name="title" value="Maldivas Escape" />
@@ -95,8 +67,8 @@
                 </jsp:include>
 
                 <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-2.jpg" />
-                    <jsp:param name="alt" value="Cidade europeia iluminada ao final da tarde" />
+                    <jsp:param name="gradientOnly" value="true" />
+                    <jsp:param name="gradientSeed" value="2" />
                     <jsp:param name="tag1" value="Cidade" />
                     <jsp:param name="tag2" value="4 dias" />
                     <jsp:param name="title" value="Paris City Lights" />
@@ -108,8 +80,8 @@
                 </jsp:include>
 
                 <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="image" value="/assets/img/offers/offer-3.jpg" />
-                    <jsp:param name="alt" value="Paisagem de montanha com lago e trilhos" />
+                    <jsp:param name="gradientOnly" value="true" />
+                    <jsp:param name="gradientSeed" value="3" />
                     <jsp:param name="tag1" value="Natureza" />
                     <jsp:param name="tag2" value="5 dias" />
                     <jsp:param name="title" value="Alpes Adventure" />
@@ -119,8 +91,6 @@
                     <jsp:param name="description" value="Uma opção para quem procura paisagens naturais, aventura e momentos únicos ao ar livre." />
                     <jsp:param name="price" value="Desde 940€" />
                 </jsp:include>
-
-                
             </div>
         </div>
     </section>
@@ -135,19 +105,14 @@
 
             <div class="cards-grid" style="margin-top: 2rem;">
                 <jsp:include page="/components/public/public_category_card.jsp">
-                    <jsp:param name="image" value="/assets/img/destinations/destination-1.jpg" />
                     <jsp:param name="title" value="Santorini" />
                     <jsp:param name="text" value="Paisagens inesquecíveis e ambiente mediterrânico." />
                 </jsp:include>
-
                 <jsp:include page="/components/public/public_category_card.jsp">
-                    <jsp:param name="image" value="/assets/img/destinations/destination-2.jpg" />
                     <jsp:param name="title" value="Bali" />
                     <jsp:param name="text" value="Relaxamento, cultura e experiências tropicais." />
                 </jsp:include>
-
                 <jsp:include page="/components/public/public_category_card.jsp">
-                    <jsp:param name="image" value="/assets/img/destinations/destination-3.jpg" />
                     <jsp:param name="title" value="Tóquio" />
                     <jsp:param name="text" value="Modernidade, energia urbana e tradição." />
                 </jsp:include>

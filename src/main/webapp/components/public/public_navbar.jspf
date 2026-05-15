@@ -1,31 +1,36 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%
+boolean navAuth = Boolean.TRUE.equals(session.getAttribute("auth"));
+String navUserType = session.getAttribute("userType") != null ? String.valueOf(session.getAttribute("userType")) : "";
+boolean navCliente = navAuth && "cliente".equals(navUserType);
+boolean navStaff = navAuth && "staff".equals(navUserType);
+String ctx = request.getContextPath();
+%>
 <nav class="public-navbar" aria-label="Navegação principal pública">
-    <div class="public-navbar__inner">
-        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp" aria-label="Ir para a página inicial do TravelExplorer">
+    <div class="public-navbar__inner public-navbar__inner--balanced">
+        <a class="public-navbar__brand" href="<%= ctx %>/index.jsp" aria-label="Ir para a página inicial do TravelExplorer">
             <span class="public-navbar__brand-mark">TE</span>
             <span class="public-navbar__brand-text">TravelExplorer</span>
         </a>
 
-        <ul class="public-navbar__links" role="list">
-            <li>
-                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
-            </li>
-            <li>
-                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=offers">Ofertas</a>
-            </li>
-            <li>
-                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=destinations">Destinos</a>
-            </li>
-            <li>
-                <a class="public-navbar__link" href="${pageContext.request.contextPath}/index.jsp?page=about">Sobre</a>
-            </li>
+        <ul class="public-navbar__links public-navbar__links--center" role="list">
+            <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp">Início</a></li>
+            <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp?page=destinations">Destinos</a></li>
+            <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp?page=about">Sobre</a></li>
+            <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp?page=offers">Explorar ofertas</a></li>
         </ul>
 
         <div class="public-navbar__actions">
-            <a class="btn btn-ghost" href="${pageContext.request.contextPath}/index.jsp?page=login">Entrar</a>
-            <a class="btn btn-primary" href="${pageContext.request.contextPath}/index.jsp?page=register">Criar conta</a>
+            <% if (navCliente) { %>
+                <a class="btn btn-ghost" href="<%= ctx %>/index.jsp?page=customer-dashboard">Área de cliente</a>
+                <a class="btn btn-primary" href="<%= ctx %>/index.jsp?page=logout">Terminar sessão</a>
+            <% } else if (navStaff) { %>
+                <a class="btn btn-ghost" href="<%= ctx %>/index.jsp?page=staff-dashboard">Área staff</a>
+                <a class="btn btn-primary" href="<%= ctx %>/index.jsp?page=logout">Terminar sessão</a>
+            <% } else { %>
+                <a class="btn btn-ghost" href="<%= ctx %>/index.jsp?page=login">Entrar</a>
+                <a class="btn btn-primary" href="<%= ctx %>/index.jsp?page=register">Criar conta</a>
+            <% } %>
         </div>
     </div>
-
-    
 </nav>

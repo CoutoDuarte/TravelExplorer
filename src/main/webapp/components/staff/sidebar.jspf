@@ -8,6 +8,7 @@
         </jsp:include>
 
         <div class="flow">
+            <a class="btn btn-ghost staff-sidebar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
             <% if (StaffAuth.hasPermission(request, "STAFF_DASHBOARD")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Dashboard</a>
             <% } %>

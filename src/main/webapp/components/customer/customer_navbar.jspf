@@ -1,14 +1,15 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <nav class="public-navbar" aria-label="Navegação principal do cliente">
     <div class="public-navbar__inner">
-        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard" aria-label="Ir para a dashboard do cliente">
+        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard" aria-label="Ir para a área de cliente">
             <span class="public-navbar__brand-mark">TE</span>
             <span class="public-navbar__brand-text">TravelExplorer</span>
         </a>
 
         <div class="public-navbar__actions">
-            <span class="text-muted customer-navbar-note">Área de cliente</span>
+            <a class="btn btn-ghost customer-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
             <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
+            <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="customer-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard">Área de cliente</a>
             <a class="btn btn-secondary customer-navbar__link" data-customer-nav-page="logout" href="${pageContext.request.contextPath}/index.jsp?page=logout">Terminar sessão</a>
         </div>
     </div>

@@ -1,5 +1,6 @@
 package ExternalAPI;
 
+import Connection.Classes.CriarSugestaoRequest;
 import Connection.Classes.HotelSugestao;
 import Connection.Classes.PesquisaRequest;
 import Connection.Classes.SugestaoViagem;
@@ -133,6 +134,268 @@ public class OpenAIClient {
         s.precoEstimadoTotal = 0;
         s.imagemKeywords = "";
         return s;
+    }
+
+    public SugestaoViagem gerarSugestaoFinal(CriarSugestaoRequest pedido) throws OpenAiApiException {
+        if (!ApiConfig.hasOpenAIKey()) {
+            throw new OpenAiApiException("OpenAI key em falta");
+        }
+        if (pedido == null || !pedido.isValid()) {
+            throw new OpenAiApiException("Pedido de sugestão inválido");
+        }
+        if (ApiConfig.isIaeduAgentMode()) {
+            return gerarSugestaoFinalIaedu(pedido);
+        }
+        return gerarSugestaoFinalChat(pedido);
+    }
+
+    public SugestaoViagem sugestaoFinalFallback(CriarSugestaoRequest pedido) {
+        SugestaoViagem s = new SugestaoViagem();
+        String dest = pedido != null && pedido.destino != null ? pedido.destino.trim() : "";
+        s.titulo = dest.isBlank() ? "A sua viagem" : "Pacote para " + dest;
+        s.descricao = "Resumo da viagem com base nas escolhas que fez. Os valores são estimativas da agência.";
+        s.transporteSugerido = "Transferes e deslocações locais conforme o destino";
+        s.resumoFinal = s.descricao;
+        s.hotelSugerido = pedido != null && pedido.hotelSelecionado != null
+                ? safeText(pedido.hotelSelecionado.nome) : "";
+        double total = 0;
+        if (pedido != null && pedido.vooIdaSelecionado != null) {
+            total += pedido.vooIdaSelecionado.precoTotal;
+        }
+        if (pedido != null && pedido.vooRegressoSelecionado != null) {
+            total += pedido.vooRegressoSelecionado.precoTotal;
+        }
+        if (pedido != null && pedido.hotelSelecionado != null) {
+            total += pedido.hotelSelecionado.precoEstimado;
+        }
+        s.precoEstimadoTotal = total;
+        s.imagemKeywords = "";
+        s.atividades.add("Explorar o centro histórico");
+        s.atividades.add("Tempo livre para descanso");
+        return s;
+    }
+
+    private SugestaoViagem gerarSugestaoFinalIaedu(CriarSugestaoRequest pedido) throws OpenAiApiException {
+        String endpoint = ApiConfig.OPENAI_BASE_URL;
+        String message = buildFinalPrompt(pedido);
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("channel_id", ApiConfig.OPENAI_CHANNEL_ID);
+        fields.put("thread_id", ApiConfig.OPENAI_THREAD_ID);
+        fields.put("user_info", "{}");
+        fields.put("message", message);
+
+        String boundary = "----TravelExplorer" + UUID.randomUUID();
+        byte[] multipartBody = buildMultipartBody(boundary, fields);
+
+        HttpResponse<String> resp;
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(endpoint))
+                    .timeout(Duration.ofSeconds(90))
+                    .header(ApiConfig.OPENAI_AUTH_HEADER, ApiConfig.buildOpenAiAuthHeaderValue())
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(multipartBody))
+                    .build();
+            resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            throw new OpenAiApiException("Erro de ligação IAedu: " + safeMessage(e.getMessage()));
+        }
+
+        String responseBody = resp.body() == null ? "" : resp.body();
+        if (resp.statusCode() != 200) {
+            String sanitized = sanitizeBody(responseBody, DEBUG_BODY_MAX);
+            logHttpFailure(endpoint, resp.statusCode(), responseBody);
+            throw new OpenAiApiException("OpenAI HTTP " + resp.statusCode(), resp.statusCode(), sanitized);
+        }
+
+        PesquisaRequest ctx = toPesquisaRequest(pedido);
+        return parseIaeduResponseFinal(responseBody, ctx, pedido);
+    }
+
+    private SugestaoViagem gerarSugestaoFinalChat(CriarSugestaoRequest pedido) throws OpenAiApiException {
+        String userPrompt = buildFinalPrompt(pedido);
+        String body = "{"
+            + "\"model\":\"" + escapeJson(ApiConfig.OPENAI_MODEL) + "\","
+            + "\"response_format\":{\"type\":\"json_object\"},"
+            + "\"messages\":["
+            +   "{\"role\":\"system\",\"content\":\"És um assistente de agência de viagens em Portugal. Responde apenas com JSON válido em português de Portugal.\"},"
+            +   "{\"role\":\"user\",\"content\":\"" + escapeJson(userPrompt) + "\"}"
+            + "],"
+            + "\"temperature\":0.4"
+            + "}";
+
+        HttpResponse<String> resp;
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(ApiConfig.OPENAI_BASE_URL))
+                    .timeout(Duration.ofSeconds(45))
+                    .header("Content-Type", "application/json")
+                    .header(ApiConfig.OPENAI_AUTH_HEADER, ApiConfig.buildOpenAiAuthHeaderValue())
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            throw new OpenAiApiException("Erro de ligação OpenAI: " + safeMessage(e.getMessage()));
+        }
+
+        String responseBody = resp.body() == null ? "" : resp.body();
+        if (resp.statusCode() != 200) {
+            String sanitized = sanitizeBody(responseBody, DEBUG_BODY_MAX);
+            logHttpFailure(resp.statusCode(), responseBody);
+            throw new OpenAiApiException("OpenAI HTTP " + resp.statusCode(), resp.statusCode(), sanitized);
+        }
+
+        try {
+            String content = extractAssistantContent(responseBody);
+            SugestaoViagem sugestao = SugestaoViagem.fromJson(content);
+            if (isEmpty(sugestao.titulo) && isEmpty(sugestao.descricao)) {
+                throw new OpenAiApiException("Sugestão inválida na resposta", 200, sanitizeBody(responseBody, DEBUG_BODY_MAX));
+            }
+            enrichFinalFromPedido(sugestao, pedido);
+            return sugestao;
+        } catch (OpenAiApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new OpenAiApiException("Resposta OpenAI inválida: " + safeMessage(e.getMessage()), 200, sanitizeBody(responseBody, DEBUG_BODY_MAX));
+        }
+    }
+
+    private SugestaoViagem parseIaeduResponseFinal(String responseBody, PesquisaRequest ctx, CriarSugestaoRequest pedido) {
+        lastIaeduDebug.rawLength = responseBody == null ? 0 : responseBody.length();
+        String assistantText = extractIaeduAssistantText(responseBody);
+        lastIaeduDebug.textPreview = truncateText(assistantText, DEBUG_TEXT_PREVIEW_MAX);
+
+        String cleaned = removeJsonFences(assistantText.trim());
+        String json = extractJsonObjectWithTitulo(cleaned);
+        if (json.isBlank()) {
+            json = extractJsonObjectWithTitulo(assistantText);
+        }
+        if (!json.isBlank()) {
+            SugestaoViagem parsed = SugestaoViagem.fromJson(json);
+            if (isStructuredFinalSugestao(parsed)) {
+                enrichFinalFromPedido(parsed, pedido);
+                return parsed;
+            }
+        }
+        if (cleaned.startsWith("{")) {
+            SugestaoViagem parsed = SugestaoViagem.fromJson(cleaned);
+            if (isStructuredFinalSugestao(parsed)) {
+                enrichFinalFromPedido(parsed, pedido);
+                return parsed;
+            }
+        }
+        return sugestaoFinalFallback(pedido);
+    }
+
+    private boolean isStructuredFinalSugestao(SugestaoViagem s) {
+        if (s == null || isEmpty(s.titulo)) {
+            return false;
+        }
+        return !isEmpty(s.descricao)
+                || !isEmpty(s.transporteSugerido)
+                || (s.atividades != null && !s.atividades.isEmpty())
+                || s.precoEstimadoTotal > 0
+                || !isEmpty(s.resumoFinal);
+    }
+
+    private void enrichFinalFromPedido(SugestaoViagem s, CriarSugestaoRequest pedido) {
+        if (s == null || pedido == null) {
+            return;
+        }
+        if (isEmpty(s.resumoFinal) && !isEmpty(s.descricao)) {
+            s.resumoFinal = s.descricao;
+        }
+        if (isEmpty(s.descricao) && !isEmpty(s.resumoFinal)) {
+            s.descricao = s.resumoFinal;
+        }
+        if (pedido.hotelSelecionado != null && !safeText(pedido.hotelSelecionado.nome).isEmpty()) {
+            s.hotelSugerido = safeText(pedido.hotelSelecionado.nome);
+        }
+        s.hoteisOpcoes = new java.util.ArrayList<>();
+        s.imagemKeywords = "";
+    }
+
+    private PesquisaRequest toPesquisaRequest(CriarSugestaoRequest pedido) {
+        PesquisaRequest r = new PesquisaRequest();
+        if (pedido == null) {
+            return r;
+        }
+        r.origem = pedido.origem;
+        r.destino = pedido.destino;
+        r.dataPartida = pedido.dataPartida;
+        r.dataRegresso = pedido.dataRegresso;
+        r.adultos = pedido.adultos;
+        r.criancas = pedido.criancas;
+        return r;
+    }
+
+    private String buildFinalPrompt(CriarSugestaoRequest pedido) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Cria um pacote de viagem premium com base APENAS nas escolhas já confirmadas pelo cliente.\n\n");
+        appendSelectedTripContext(sb, pedido);
+        sb.append("\nRegras obrigatórias:\n");
+        sb.append("- Responde apenas com JSON válido, sem markdown e sem texto extra.\n");
+        sb.append("- Não inventes voos nem hotéis adicionais.\n");
+        sb.append("- Não peças imagens nem palavras-chave de imagem.\n");
+        sb.append("- Usa português de Portugal, textos curtos e elegantes.\n");
+        sb.append("- O precoEstimadoTotal deve ser coerente com os preços já escolhidos (voos + hotel se existir).\n");
+        sb.append("- Usa exatamente estas chaves: titulo, descricao, transporteSugerido, atividades, precoEstimadoTotal, resumoFinal.\n");
+        appendExpectedFinalJsonShape(sb);
+        sb.append("Inclui entre 3 e 5 atividades. O resumoFinal deve ser um parágrafo curto de agência.\n");
+        return sb.toString();
+    }
+
+    private void appendSelectedTripContext(StringBuilder sb, CriarSugestaoRequest pedido) {
+        if (pedido == null) {
+            return;
+        }
+        sb.append("Rota: ").append(safeText(pedido.origem)).append(" → ").append(safeText(pedido.destino)).append('\n');
+        sb.append("Datas: ").append(safeText(pedido.dataPartida)).append(" a ").append(safeText(pedido.dataRegresso)).append('\n');
+        sb.append("Passageiros: ").append(pedido.adultos).append(" adulto(s), ").append(pedido.criancas).append(" criança(s)\n\n");
+        if (pedido.vooIdaSelecionado != null) {
+            sb.append("Voo de ida escolhido:\n");
+            appendCompactVoo(sb, pedido.vooIdaSelecionado);
+        }
+        if (pedido.vooRegressoSelecionado != null) {
+            sb.append("Voo de regresso escolhido:\n");
+            appendCompactVoo(sb, pedido.vooRegressoSelecionado);
+        }
+        if (pedido.hotelSelecionado != null && !safeText(pedido.hotelSelecionado.nome).isEmpty()) {
+            sb.append("Alojamento escolhido:\n");
+            appendCompactHotel(sb, pedido.hotelSelecionado);
+        } else {
+            sb.append("Alojamento: o cliente optou por continuar sem alojamento selecionado.\n");
+        }
+    }
+
+    private void appendCompactVoo(StringBuilder sb, VooInfo v) {
+        sb.append("- ").append(safeText(v.companhia)).append(" ").append(safeText(v.numeroVoo))
+          .append(", ").append(safeText(v.origem)).append(" ").append(formatClock(v.partida))
+          .append(" → ").append(safeText(v.destino)).append(" ").append(formatClock(v.chegada))
+          .append(", ").append(formatEuroCompact(v.precoTotal)).append('\n');
+    }
+
+    private void appendCompactHotel(StringBuilder sb, HotelSugestao h) {
+        sb.append("- ").append(safeText(h.nome)).append(" | ").append(safeText(h.categoria))
+          .append(" | ").append(safeText(h.zona)).append(" | preço ").append(formatEuroCompact(h.precoEstimado));
+        if (h.rating > 0) {
+            sb.append(" | ").append(h.rating).append(" estrelas");
+        }
+        if (h.reviews > 0) {
+            sb.append(" | ").append(h.reviews).append(" avaliações");
+        }
+        sb.append('\n');
+    }
+
+    private void appendExpectedFinalJsonShape(StringBuilder sb) {
+        sb.append("{\n");
+        sb.append("  \"titulo\": \"...\",\n");
+        sb.append("  \"descricao\": \"...\",\n");
+        sb.append("  \"transporteSugerido\": \"...\",\n");
+        sb.append("  \"atividades\": [\"...\", \"...\", \"...\"],\n");
+        sb.append("  \"precoEstimadoTotal\": 0.0,\n");
+        sb.append("  \"resumoFinal\": \"...\"\n");
+        sb.append("}\n");
     }
 
     private SugestaoViagem gerarSugestaoIaeduAgent(PesquisaRequest request, List<VooInfo> voosIda, List<VooInfo> voosRegresso,

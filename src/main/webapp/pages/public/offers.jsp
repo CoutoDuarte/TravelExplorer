@@ -1,4 +1,12 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,Connection.Classes.Pacote,Connection.CRUD.PacoteCRUD" %>
+<%!
+String jspParamSafe(String value) {
+    if (value == null) {
+        return "";
+    }
+    return value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
+}
+%>
 <%
 PacoteCRUD pacoteCRUDPublic = new PacoteCRUD();
 List<Pacote> listaOfertas = pacoteCRUDPublic.findAll();
@@ -8,59 +16,21 @@ symO.setGroupingSeparator(' ');
 java.text.DecimalFormat dfOferta = new java.text.DecimalFormat("#,##0.00", symO);
 %>
 
-<div class="public-page">
+<div class="public-page public-page--offers">
     <section class="public-page__section public-page__section--soft">
         <div class="container">
-            <jsp:include page="/components/shared/section_title.jsp">
-                <jsp:param name="eyebrow" value="Ofertas" />
-                <jsp:param name="heading" value="Encontra a oferta certa para a tua próxima viagem" />
-                <jsp:param name="description" value="Explora os pacotes disponíveis publicados pela agência. Os preços base e as condições gerais são indicados em cada cartão." />
-            </jsp:include>
+            <header class="public-page-header">
+                <span class="public-page-header__eyebrow">Ofertas</span>
+                <h1 class="public-page-header__title">Explorar ofertas</h1>
+                <p class="public-page-header__lead">Descobre as propostas criadas pela equipa TravelExplorer.</p>
+            </header>
 
-            <div class="public-search-box" style="margin-top: 2rem;">
-                <form class="public-search-box__form" action="#" method="get">
-                    <div class="public-search-box__field">
-                        <label class="public-search-box__label" for="offersOrigin">Origem</label>
-                        <input class="public-search-box__control" type="text" id="offersOrigin" name="origin" placeholder="Ex.: Porto">
-                    </div>
-
-                    <div class="public-search-box__field">
-                        <label class="public-search-box__label" for="offersDestination">Destino</label>
-                        <input class="public-search-box__control" type="text" id="offersDestination" name="destination" placeholder="Ex.: Roma">
-                    </div>
-
-                    <div class="public-search-box__field">
-                        <label class="public-search-box__label" for="offersDate">Data</label>
-                        <input class="public-search-box__control" type="date" id="offersDate" name="date">
-                    </div>
-
-                    <div class="public-search-box__field">
-                        <label class="public-search-box__label" for="offersBudget">Preço máximo</label>
-                        <select class="public-search-box__control" id="offersBudget" name="budget">
-                            <option value="">Sem limite</option>
-                            <option value="500">Até 500€</option>
-                            <option value="1000">Até 1000€</option>
-                            <option value="1500">Até 1500€</option>
-                            <option value="2000">Até 2000€</option>
-                        </select>
-                    </div>
-
-                    <button class="btn btn-accent public-search-box__action" type="submit">
-                        Filtrar ofertas
-                    </button>
-
-                    
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <section class="public-page__section public-page__section--soft">
-        <div class="container">
             <% if (listaOfertas == null || listaOfertas.isEmpty()) { %>
-            <p class="text-muted">Sem ofertas disponíveis de momento.</p>
+            <div class="empty-state offers-page__empty">
+                <p>Ainda não existem ofertas disponíveis.</p>
+            </div>
             <% } else { %>
-            <div class="cards-grid">
+            <div class="cards-grid public-cards-grid offers-page__grid">
                 <% for (Pacote op : listaOfertas) {
                     int imgN = (op.getIdPacote() % 4) + 1;
                     String imgPath = "/assets/img/offers/offer-" + imgN + ".jpg";
@@ -75,30 +45,29 @@ java.text.DecimalFormat dfOferta = new java.text.DecimalFormat("#,##0.00", symO)
                         tag2 = tag2 + ", " + op.getNumCriancas() + " crianças";
                     }
                     String extraRef = "Ref. " + op.getIdPacote();
-                    String detailHref = "offer-details&idPacote=" + op.getIdPacote();
+                    String altTxt = jspParamSafe(titulo);
+                    String titleTxt = jspParamSafe(titulo);
+                    String descTxt = jspParamSafe(desc);
+                    String tag2Txt = jspParamSafe(tag2);
+                    String extraTxt = jspParamSafe(extraRef);
+                    String precoParam = jspParamSafe(precoTxt);
+                    String gradientSeed = String.valueOf((op.getIdPacote() % 3) + 1);
+                    String idPacoteTxt = String.valueOf(op.getIdPacote());
                 %>
-                <article class="card">
-                    <div class="card__media">
-                        <img src="${pageContext.request.contextPath}<%= imgPath %>" alt="<%= titulo.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;") %>">
-                    </div>
-                    <div class="card__body">
-                        <div class="card__meta">
-                            <span class="card__tag">Pacote</span>
-                            <span class="card__tag"><%= tag2 %></span>
-                        </div>
-                        <h3 class="card__title"><%= titulo %></h3>
-                        <div class="offer-card__meta-line">
-                            <span>—</span>
-                            <span>—</span>
-                            <span><%= extraRef %></span>
-                        </div>
-                        <p class="offer-card__description"><%= desc %></p>
-                        <div class="card__footer">
-                            <span class="card__price"><%= precoTxt %></span>
-                            <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=<%= detailHref %>">Ver detalhe</a>
-                        </div>
-                    </div>
-                </article>
+                <jsp:include page="/components/public/public_offer_card.jsp">
+                    <jsp:param name="image" value="<%= imgPath %>" />
+                    <jsp:param name="alt" value="<%= altTxt %>" />
+                    <jsp:param name="tag1" value="Pacote" />
+                    <jsp:param name="tag2" value="<%= tag2Txt %>" />
+                    <jsp:param name="title" value="<%= titleTxt %>" />
+                    <jsp:param name="origin" value="—" />
+                    <jsp:param name="destination" value="—" />
+                    <jsp:param name="extra" value="<%= extraTxt %>" />
+                    <jsp:param name="description" value="<%= descTxt %>" />
+                    <jsp:param name="price" value="<%= precoParam %>" />
+                    <jsp:param name="idPacote" value="<%= idPacoteTxt %>" />
+                    <jsp:param name="gradientSeed" value="<%= gradientSeed %>" />
+                </jsp:include>
                 <% } %>
             </div>
             <% } %>

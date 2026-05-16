@@ -1,7 +1,11 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,Connection.Classes.Cliente,Connection.CRUD.ClienteCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.text.NumberFormat,java.util.Locale,Connection.Classes.Cliente,Connection.Classes.Reserva,Connection.Classes.Pacote,Connection.Classes.Pagamento,Connection.CRUD.ClienteCRUD,Connection.CRUD.ReservaCRUD,Connection.CRUD.PacoteCRUD,Connection.CRUD.PagamentoCRUD" %>
 <%
 ClienteCRUD clienteCRUD = new ClienteCRUD();
+ReservaCRUD reservaCRUD = new ReservaCRUD();
+PacoteCRUD pacoteCRUD = new PacoteCRUD();
+PagamentoCRUD pagamentoCRUD = new PagamentoCRUD();
 List<Cliente> clientes = clienteCRUD.findAll();
+NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(new Locale("pt", "PT"));
 String selCli = request.getParameter("selectedCliente");
 Cliente clienteSel = null;
 if (selCli != null && !selCli.trim().isEmpty()) {
@@ -77,6 +81,23 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
         <p><strong>Morada:</strong> <%= clienteSel.getMorada() != null ? clienteSel.getMorada() : "—" %></p>
         <p><strong>Total de reservas:</strong> <%= clienteCRUD.countReservasByCliente(clienteSel.getIdCliente()) %></p>
         <p><strong>Última reserva (pacote):</strong> <% String u = clienteCRUD.findLatestReservaNameByCliente(clienteSel.getIdCliente()); %><%= u != null && !u.isEmpty() ? u : "—" %></p>
+        <%
+        List<Reserva> reservasCliente = reservaCRUD.findByCliente(clienteSel.getIdCliente());
+        if (reservasCliente != null && !reservasCliente.isEmpty()) {
+        %>
+        <div class="flow" style="margin-top: 1rem;">
+            <h3 style="font-size: 1rem;">Reservas</h3>
+            <ul class="public-info-card__list">
+                <% for (Reserva rc : reservasCliente) {
+                    Pacote pk = rc.getIdPacote() > 0 ? pacoteCRUD.findById(rc.getIdPacote()) : pacoteCRUD.findByReserva(rc.getIdReserva());
+                    String pkNome = pk != null && pk.getNome() != null ? pk.getNome() : "Reserva #" + rc.getIdReserva();
+                    List<Pagamento> pagos = pagamentoCRUD.findByReserva(rc.getIdReserva());
+                %>
+                <li><strong><%= pkNome %></strong> — <%= rc.getEstado() != null ? rc.getEstado() : "" %> · <%= currencyFmt.format(rc.getTotalPagar()) %><% if (!pagos.isEmpty()) { %> · <%= pagos.get(0).getMetodo() != null ? pagos.get(0).getMetodo() : "" %><% } %></li>
+                <% } %>
+            </ul>
+        </div>
+        <% } %>
     </div>
 </div>
 <% } %>

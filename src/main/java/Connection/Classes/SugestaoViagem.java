@@ -13,6 +13,7 @@ public class SugestaoViagem {
     public List<String> atividades = new ArrayList<>();
     public String imagemKeywords;
     public double precoEstimadoTotal;
+    public String resumoFinal;
     public List<HotelSugestao> hoteisOpcoes = new ArrayList<>();
 
     public static SugestaoViagem fromJson(String json) {
@@ -25,6 +26,7 @@ public class SugestaoViagem {
         s.transporteSugerido = extractStringField(body, "transporteSugerido");
         s.imagemKeywords = extractStringField(body, "imagemKeywords");
         s.precoEstimadoTotal = extractNumberField(body, "precoEstimadoTotal");
+        s.resumoFinal = extractStringField(body, "resumoFinal");
         s.atividades = extractStringArray(body, "atividades");
         s.hoteisOpcoes = extractHotelArray(body, "hoteisOpcoes");
         if ((s.hotelSugerido == null || s.hotelSugerido.isBlank()) && !s.hoteisOpcoes.isEmpty()) {

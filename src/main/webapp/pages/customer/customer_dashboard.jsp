@@ -8,11 +8,13 @@
 <%@ page import="Connection.Classes.Reserva" %>
 <%@ page import="Connection.Classes.Pacote" %>
 <%@ page import="Connection.Classes.Viagens" %>
+<%@ page import="Connection.Classes.ClienteOfertaGuardada" %>
 <%@ page import="Connection.CRUD.ClienteCRUD" %>
 <%@ page import="Connection.CRUD.ReservaCRUD" %>
 <%@ page import="Connection.CRUD.PagamentoCRUD" %>
 <%@ page import="Connection.CRUD.PacoteCRUD" %>
 <%@ page import="Connection.CRUD.ViagemCRUD" %>
+<%@ page import="Connection.CRUD.ClienteOfertaGuardadaCRUD" %>
 <%!
 private String escapeHtml(String value) {
     if (value == null) {
@@ -64,7 +66,8 @@ Cliente cliente = null;
 int totalReservations = 0;
 int activeReservations = 0;
 double totalPaidValue = 0;
-List<Reserva> latestReservations = new java.util.ArrayList<Reserva>();
+List<Reserva> minhasReservas = new java.util.ArrayList<Reserva>();
+List<ClienteOfertaGuardada> ofertasGuardadas = new java.util.ArrayList<ClienteOfertaGuardada>();
 String technicalError = null;
 ClienteCRUD clienteCRUD = new ClienteCRUD();
 ReservaCRUD reservaCRUD = new ReservaCRUD();
@@ -77,10 +80,13 @@ try {
     totalReservations = reservaCRUD.countByCliente(idCliente);
     activeReservations = reservaCRUD.countAtivasByCliente(idCliente);
     totalPaidValue = pagamentoCRUD.sumValorByCliente(idCliente);
-    latestReservations = reservaCRUD.findLatestByCliente(idCliente, 3);
+    minhasReservas = reservaCRUD.findByCliente(idCliente);
+    ofertasGuardadas = ClienteOfertaGuardadaCRUD.findSavedOffersByCliente(idCliente);
 } catch (Exception e) {
     technicalError = "Erro técnico: " + e.getMessage();
 }
+
+String ctxPath = request.getContextPath();
 
 String customerName = cliente != null ? cliente.getNome() : "";
 String heading = hasText(customerName) ? "Bem-vindo, " + escapeHtml(customerName) : "Bem-vindo à tua área de cliente";
@@ -99,7 +105,6 @@ String totalPaid = currencyFormat.format(totalPaidValue);
             <p class="text-muted"><%= escapeHtml(technicalError) %></p>
         </div>
     <% } %>
-
     <div class="customer-dashboard-grid">
         <div class="surface-block customer-summary-card">
             <div class="flow">
@@ -132,16 +137,17 @@ String totalPaid = currencyFormat.format(totalPaidValue);
     <div class="surface-block surface-block-lg customer-action-panel">
         <div class="flow">
             <jsp:include page="/components/shared/section_title.jsp">
-                <jsp:param name="eyebrow" value="Próximos passos" />
-                <jsp:param name="heading" value="Reservas mais recentes" />
-                <jsp:param name="description" value="Consulta rapidamente as reservas mais recentes associadas à tua conta." />
+                <jsp:param name="eyebrow" value="Reservas" />
+                <jsp:param name="heading" value="As minhas reservas" />
+                <jsp:param name="description" value="Reservas guardadas a partir do assistente de viagem ou criadas pela equipa." />
             </jsp:include>
 
-            <% if (latestReservations.isEmpty()) { %>
-                <p class="text-muted">Ainda não existem reservas associadas à tua conta.</p>
+            <% if (minhasReservas.isEmpty()) { %>
+                <p class="text-muted">Ainda não tens reservas guardadas.</p>
+                <a class="btn btn-primary" href="<%= ctxPath %>/index.jsp?page=home#hero-studio">Planear viagem</a>
             <% } else { %>
                 <div class="customer-dashboard-grid">
-                    <% for (Reserva reservation : latestReservations) {
+                    <% for (Reserva reservation : minhasReservas) {
                         Pacote pacote = pacoteCRUD.findByReserva(reservation.getIdReserva());
                         List<Viagens> viagens = pacote != null ? viagemCRUD.findByPacote(pacote.getIdPacote()) : new java.util.ArrayList<Viagens>();
                         Viagens primeiraViagem = viagens.isEmpty() ? null : viagens.get(0);
@@ -153,6 +159,7 @@ String totalPaid = currencyFormat.format(totalPaidValue);
                         int displayTravelers = travelers > 0 ? travelers : 1;
                         String travelersText = displayTravelers + (displayTravelers == 1 ? " viajante" : " viajantes");
                         String status = hasText(reservation.getEstado()) ? reservation.getEstado() : "Estado por definir";
+                        String totalReserva = currencyFormat.format(reservation.getTotalPagar());
                     %>
                         <article class="surface-block customer-summary-card">
                             <div class="flow">
@@ -166,6 +173,7 @@ String totalPaid = currencyFormat.format(totalPaidValue);
                                 <div class="flow" style="gap: 0.65rem;">
                                     <p class="text-muted"><strong>Destino:</strong> <%= escapeHtml(destination) %></p>
                                     <p class="text-muted"><strong>Datas:</strong> <%= escapeHtml(dates) %></p>
+                                    <p class="text-muted"><strong>Total:</strong> <%= escapeHtml(totalReserva) %></p>
                                     <p class="text-muted"><strong>Viajantes:</strong> <%= escapeHtml(travelersText) %></p>
                                 </div>
                                 <div class="actions-row">
@@ -178,9 +186,46 @@ String totalPaid = currencyFormat.format(totalPaidValue);
             <% } %>
 
             <div class="actions-row">
-                <a class="btn btn-primary" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
+                <a class="btn btn-primary" href="<%= ctxPath %>/index.jsp?page=home#hero-studio">Planear nova viagem</a>
                 <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=profile">Gerir conta</a>
             </div>
+        </div>
+    </div>
+
+    <div class="surface-block surface-block-lg customer-action-panel">
+        <div class="flow">
+            <jsp:include page="/components/shared/section_title.jsp">
+                <jsp:param name="eyebrow" value="Ofertas" />
+                <jsp:param name="heading" value="Ofertas guardadas" />
+                <jsp:param name="description" value="Pacotes que guardaste para consultar mais tarde." />
+            </jsp:include>
+
+            <% if (ofertasGuardadas.isEmpty()) { %>
+                <p class="text-muted">Ainda não guardaste nenhuma oferta.</p>
+                <a class="btn btn-primary" href="<%= ctxPath %>/index.jsp?page=destinations">Ver destinos</a>
+            <% } else { %>
+                <div class="customer-dashboard-grid">
+                    <% for (ClienteOfertaGuardada oferta : ofertasGuardadas) {
+                        String ofertaNome = hasText(oferta.getNomePacote()) ? oferta.getNomePacote() : "Pacote #" + oferta.getIdPacote();
+                        String ofertaDestino = hasText(oferta.getDestino()) ? oferta.getDestino() : "Destino por definir";
+                        String ofertaPreco = currencyFormat.format(oferta.getPrecoBase());
+                    %>
+                        <article class="surface-block customer-summary-card">
+                            <div class="flow">
+                                <span class="section-title__eyebrow">Pacote</span>
+                                <h2 style="font-size: 1.2rem;"><%= escapeHtml(ofertaNome) %></h2>
+                                <p class="text-muted"><strong>Destino:</strong> <%= escapeHtml(ofertaDestino) %></p>
+                                <p class="text-muted"><strong>Preço base:</strong> <%= escapeHtml(ofertaPreco) %></p>
+                                <div class="actions-row">
+                                    <a class="btn btn-secondary" href="<%= ctxPath %>/index.jsp?page=offer-details&id=<%= oferta.getIdPacote() %>">Ver oferta</a>
+                                    <a class="btn btn-ghost" href="<%= ctxPath %>/index.jsp?page=saved-offers">Gerir ofertas</a>
+                                </div>
+                            </div>
+                        </article>
+                    <% } %>
+                </div>
+                <a class="btn btn-secondary" href="<%= ctxPath %>/index.jsp?page=saved-offers">Ver todas as ofertas guardadas</a>
+            <% } %>
         </div>
     </div>
 </div>

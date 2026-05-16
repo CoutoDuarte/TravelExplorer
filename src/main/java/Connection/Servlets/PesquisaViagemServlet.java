@@ -1,27 +1,19 @@
 package Connection.Servlets;
 
 import Connection.Classes.FlightsSearchResult;
-import Connection.Classes.HotelSugestao;
 import Connection.Classes.PesquisaRequest;
-import Connection.Classes.SugestaoViagem;
 import Connection.Classes.VooInfo;
 import ExternalAPI.ApiConfig;
 import ExternalAPI.FlightsClient;
 import ExternalAPI.FlightsClient.FlightsApiException;
-import ExternalAPI.HotelsClient;
-import ExternalAPI.OpenAIClient;
-import ExternalAPI.OpenAIClient.IaeduParseDebug;
-import ExternalAPI.OpenAIClient.OpenAiApiException;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.List;
 
 @WebServlet("/pesquisar")
@@ -30,9 +22,7 @@ public class PesquisaViagemServlet extends HttpServlet {
     private static final String ERRO_GERAL = "Não foi possível concluir a pesquisa neste momento.";
     private static final String ERRO_AUTH = "Para pesquisar e guardar viagens, precisa de iniciar sessão como cliente.";
 
-    private final OpenAIClient openAI = new OpenAIClient();
     private final FlightsClient flights = new FlightsClient();
-    private final HotelsClient hotelsClient = new HotelsClient();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -54,7 +44,7 @@ public class PesquisaViagemServlet extends HttpServlet {
         String debugMessage = "";
         int flightsCount = 0;
 
-        if (!isClienteLoggedIn(req)) {
+        if (!BookingJsonHelper.isClienteLoggedIn(req)) {
             out.print(authRequiredJson());
             return;
         }
@@ -66,7 +56,7 @@ public class PesquisaViagemServlet extends HttpServlet {
             if (debug) {
                 debugMessage = "Parâmetros obrigatórios em falta ou inválidos";
             }
-            out.print(errorJson(debug, debugStep, debugMessage, flightsCount, null, null));
+            out.print(errorJson(debug, debugStep, debugMessage, flightsCount));
             return;
         }
 
@@ -79,62 +69,15 @@ public class PesquisaViagemServlet extends HttpServlet {
             if (debug) {
                 debugMessage = e.getDebugMessage();
             }
-            out.print(errorJson(debug, debugStep, debugMessage, flightsCount, null, null));
+            out.print(errorJson(debug, debugStep, debugMessage, flightsCount));
             return;
         }
 
         List<VooInfo> voosIda = flightResult == null ? List.of() : flightResult.voosIda;
         List<VooInfo> voosRegresso = flightResult == null ? List.of() : flightResult.voosRegresso;
 
-        debugStep = "call-hotels";
-        List<HotelSugestao> serpHotels = hotelsClient.pesquisarHotels(pesquisa);
-
-        SugestaoViagem sugestao;
-        debugStep = "call-openai";
-        try {
-            sugestao = openAI.gerarSugestaoViagem(pesquisa, voosIda, voosRegresso, serpHotels);
-        } catch (OpenAiApiException e) {
-            if (debug) {
-                debugMessage = e.getDebugMessage();
-            }
-            sugestao = openAI.sugestaoQuandoErroExterno(pesquisa);
-        }
-
-        aplicarHoteisResposta(sugestao, serpHotels);
-
         debugStep = "build-json";
-        try {
-            out.print(successJson(pesquisa, flightResult, sugestao, debug, flightsCount, serpHotels));
-        } catch (Exception e) {
-            if (debug) {
-                debugMessage = "Erro ao construir JSON";
-            }
-            out.print(errorJson(debug, debugStep, debugMessage, flightsCount, null, hotelsClient));
-        }
-    }
-
-    private void aplicarHoteisResposta(SugestaoViagem sugestao, List<HotelSugestao> serpHotels) {
-        if (sugestao == null) {
-            return;
-        }
-        if (serpHotels != null && !serpHotels.isEmpty()) {
-            int n = Math.min(serpHotels.size(), 8);
-            sugestao.hoteisOpcoes = new ArrayList<>(serpHotels.subList(0, n));
-            if (sugestao.hotelSugerido == null || sugestao.hotelSugerido.isBlank()) {
-                sugestao.hotelSugerido = serpHotels.get(0).nome;
-            }
-            return;
-        }
-        if (sugestao.hoteisOpcoes == null) {
-            sugestao.hoteisOpcoes = new ArrayList<>();
-        }
-    }
-
-    private boolean isClienteLoggedIn(HttpServletRequest req) {
-        HttpSession session = req.getSession(false);
-        return session != null
-                && Boolean.TRUE.equals(session.getAttribute("auth"))
-                && "cliente".equals(session.getAttribute("userType"));
+        out.print(successJson(pesquisa, voosIda, voosRegresso, debug, flightsCount));
     }
 
     private int countFlights(FlightsSearchResult result) {
@@ -155,14 +98,8 @@ public class PesquisaViagemServlet extends HttpServlet {
                 + JsonUtil.escape(ERRO_AUTH) + "\"}";
     }
 
-    private String successJson(PesquisaRequest p, FlightsSearchResult flights, SugestaoViagem s,
-                               boolean debug, int flightsCount, List<HotelSugestao> serpHotels) {
-        List<VooInfo> ida = flights == null || flights.voosIda == null ? List.of() : flights.voosIda;
-        List<VooInfo> regresso = flights == null || flights.voosRegresso == null ? List.of() : flights.voosRegresso;
-        List<HotelSugestao> hoteisOut = s != null && s.hoteisOpcoes != null
-                ? s.hoteisOpcoes
-                : List.of();
-
+    private String successJson(PesquisaRequest p, List<VooInfo> ida, List<VooInfo> regresso,
+                               boolean debug, int flightsCount) {
         StringBuilder json = new StringBuilder();
         json.append("{\"ok\":true");
         json.append(",\"origem\":\"").append(JsonUtil.escape(p.origem)).append("\"");
@@ -171,145 +108,35 @@ public class PesquisaViagemServlet extends HttpServlet {
         json.append(",\"dataRegresso\":\"").append(JsonUtil.escape(p.dataRegresso)).append("\"");
         json.append(",\"adultos\":").append(p.adultos);
         json.append(",\"criancas\":").append(p.criancas);
-        json.append(",\"voos\":").append(voosJson(ida));
-        json.append(",\"voosIda\":").append(voosJson(ida));
-        json.append(",\"voosRegresso\":").append(voosJson(regresso));
-        json.append(",\"sugestao\":").append(sugestaoJson(s));
-        json.append(",\"hoteisOpcoes\":").append(hoteisOpcoesJson(hoteisOut));
+        json.append(",\"voos\":").append(BookingJsonHelper.voosJson(ida));
+        json.append(",\"voosIda\":").append(BookingJsonHelper.voosJson(ida));
+        json.append(",\"voosRegresso\":").append(BookingJsonHelper.voosJson(regresso));
+        json.append(",\"sugestao\":").append(BookingJsonHelper.nullSugestaoJson());
+        json.append(",\"hoteisOpcoes\":").append(BookingJsonHelper.emptyHoteisJson());
         if (debug) {
-            appendDebugFields(json, "build-json", "", flightsCount, null, hotelsClient);
-            IaeduParseDebug iaeduDebug = openAI.getLastIaeduDebug();
-            json.append(",\"openAiRawLength\":").append(iaeduDebug.rawLength);
-            json.append(",\"openAiTextPreview\":\"").append(JsonUtil.escape(iaeduDebug.textPreview)).append("\"");
+            appendDebugFields(json, "build-json", "", flightsCount);
         }
         json.append("}");
         return json.toString();
     }
 
-    private String voosJson(List<VooInfo> voos) {
-        StringBuilder json = new StringBuilder("[");
-        if (voos != null) {
-            for (int i = 0; i < voos.size(); i++) {
-                if (i > 0) json.append(',');
-                json.append(vooJson(voos.get(i)));
-            }
-        }
-        json.append(']');
-        return json.toString();
-    }
-
-    private String vooJson(VooInfo v) {
-        return "{"
-            + "\"companhia\":\"" + JsonUtil.escape(v.companhia) + "\","
-            + "\"numeroVoo\":\"" + JsonUtil.escape(v.numeroVoo) + "\","
-            + "\"origem\":\"" + JsonUtil.escape(v.origem) + "\","
-            + "\"destino\":\"" + JsonUtil.escape(v.destino) + "\","
-            + "\"aeroportoOrigem\":\"" + JsonUtil.escape(v.aeroportoOrigem) + "\","
-            + "\"aeroportoDestino\":\"" + JsonUtil.escape(v.aeroportoDestino) + "\","
-            + "\"partida\":\"" + JsonUtil.escape(v.partida) + "\","
-            + "\"chegada\":\"" + JsonUtil.escape(v.chegada) + "\","
-            + "\"duracao\":\"" + JsonUtil.escape(v.duracao) + "\","
-            + "\"precoPorPessoa\":" + formatNumber(v.precoPorPessoa) + ","
-            + "\"precoTotal\":" + formatNumber(v.precoTotal)
-            + "}";
-    }
-
-    private String sugestaoJson(SugestaoViagem s) {
-        if (s == null) {
-            return "{}";
-        }
-        StringBuilder json = new StringBuilder("{");
-        json.append("\"titulo\":\"").append(JsonUtil.escape(s.titulo)).append("\"");
-        json.append(",\"descricao\":\"").append(JsonUtil.escape(s.descricao)).append("\"");
-        json.append(",\"hotelSugerido\":\"").append(JsonUtil.escape(s.hotelSugerido)).append("\"");
-        json.append(",\"transporteSugerido\":\"").append(JsonUtil.escape(s.transporteSugerido)).append("\"");
-        json.append(",\"atividades\":").append(atividadesJson(s.atividades));
-        json.append(",\"imagemKeywords\":\"").append(JsonUtil.escape(s.imagemKeywords)).append("\"");
-        json.append(",\"precoEstimadoTotal\":").append(formatNumber(s.precoEstimadoTotal));
-        json.append(",\"hoteisOpcoes\":").append(hoteisOpcoesJson(s.hoteisOpcoes));
-        json.append("}");
-        return json.toString();
-    }
-
-    private String hoteisOpcoesJson(List<HotelSugestao> hoteis) {
-        StringBuilder json = new StringBuilder("[");
-        if (hoteis != null) {
-            for (int i = 0; i < hoteis.size(); i++) {
-                if (i > 0) json.append(',');
-                HotelSugestao h = hoteis.get(i);
-                String descCurta = h.descricaoCurta != null && !h.descricaoCurta.isBlank()
-                        ? h.descricaoCurta
-                        : (h.descricao != null ? h.descricao : "");
-                json.append("{");
-                json.append("\"nome\":\"").append(JsonUtil.escape(h.nome)).append("\"");
-                json.append(",\"zona\":\"").append(JsonUtil.escape(h.zona)).append("\"");
-                json.append(",\"categoria\":\"").append(JsonUtil.escape(h.categoria)).append("\"");
-                json.append(",\"descricao\":\"").append(JsonUtil.escape(h.descricao != null ? h.descricao : "")).append("\"");
-                json.append(",\"descricaoCurta\":\"").append(JsonUtil.escape(descCurta)).append("\"");
-                json.append(",\"precoEstimado\":").append(formatNumber(h.precoEstimado));
-                json.append(",\"imagemKeywords\":\"").append(JsonUtil.escape(h.imagemKeywords != null ? h.imagemKeywords : "")).append("\"");
-                json.append(",\"imagemUrl\":\"").append(JsonUtil.escape(h.imagemUrl != null ? h.imagemUrl : "")).append("\"");
-                json.append(",\"rating\":").append(formatNumber(h.rating));
-                json.append(",\"reviews\":").append(h.reviews);
-                json.append(",\"amenities\":\"").append(JsonUtil.escape(h.amenities != null ? h.amenities : "")).append("\"");
-                json.append(",\"origemDados\":\"").append(JsonUtil.escape(h.origemDados != null ? h.origemDados : "")).append("\"");
-                json.append("}");
-            }
-        }
-        json.append(']');
-        return json.toString();
-    }
-
-    private String atividadesJson(List<String> atividades) {
-        StringBuilder json = new StringBuilder("[");
-        if (atividades != null) {
-            for (int i = 0; i < atividades.size(); i++) {
-                if (i > 0) json.append(',');
-                json.append('"').append(JsonUtil.escape(atividades.get(i))).append('"');
-            }
-        }
-        json.append(']');
-        return json.toString();
-    }
-
-    private String errorJson(boolean debug, String debugStep, String debugMessage,
-                             int flightsCount, OpenAiApiException openAiError, HotelsClient hc) {
+    private String errorJson(boolean debug, String debugStep, String debugMessage, int flightsCount) {
         StringBuilder json = new StringBuilder();
         json.append("{\"ok\":false");
         json.append(",\"message\":\"").append(JsonUtil.escape(ERRO_GERAL)).append("\"");
         if (debug) {
-            appendDebugFields(json, debugStep, debugMessage, flightsCount, openAiError, hc);
+            appendDebugFields(json, debugStep, debugMessage, flightsCount);
         }
         json.append("}");
         return json.toString();
     }
 
-    private void appendDebugFields(StringBuilder json, String debugStep, String debugMessage,
-                                   int flightsCount, OpenAiApiException openAiError, HotelsClient hc) {
+    private void appendDebugFields(StringBuilder json, String debugStep, String debugMessage, int flightsCount) {
         json.append(",\"debugStep\":\"").append(JsonUtil.escape(debugStep)).append("\"");
         if (debugMessage != null && !debugMessage.isBlank()) {
             json.append(",\"debugMessage\":\"").append(JsonUtil.escape(debugMessage)).append("\"");
         }
-        json.append(",\"openAiKeyLoaded\":").append(ApiConfig.hasOpenAIKey());
         json.append(",\"serpApiKeyLoaded\":").append(ApiConfig.hasSerpAPIKey());
         json.append(",\"flightsCount\":").append(flightsCount);
-        if (hc != null) {
-            json.append(",\"hotelsCount\":").append(hc.getLastHotelCount());
-            json.append(",\"hotelsProvider\":\"").append(JsonUtil.escape("serpapi_google_hotels")).append("\"");
-            json.append(",\"hotelDebugMessage\":\"").append(JsonUtil.escape(hc.getLastHotelDebugMessage())).append("\"");
-        }
-        if (openAiError != null) {
-            if (openAiError.getHttpStatus() > 0) {
-                json.append(",\"openAiStatus\":").append(openAiError.getHttpStatus());
-            }
-            if (openAiError.getSanitizedBody() != null && !openAiError.getSanitizedBody().isBlank()) {
-                json.append(",\"openAiBody\":\"").append(JsonUtil.escape(openAiError.getSanitizedBody())).append("\"");
-            }
-        }
-    }
-
-    private String formatNumber(double value) {
-        if (value == (long) value) return String.valueOf((long) value);
-        return String.valueOf(value);
     }
 }

@@ -75,6 +75,27 @@ public class PacoteCRUD {
         return findAll();
     }
 
+    public List<Pacote> findRecent(int limit) {
+        if (limit <= 0) {
+            return findAll();
+        }
+        List<Pacote> pacotes = new ArrayList<>();
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "
+                   + "FROM PACOTE ORDER BY idPacote DESC LIMIT ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    pacotes.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return pacotes;
+    }
+
     public List<Pacote> findAll() {
         List<Pacote> pacotes = new ArrayList<>();
         String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "

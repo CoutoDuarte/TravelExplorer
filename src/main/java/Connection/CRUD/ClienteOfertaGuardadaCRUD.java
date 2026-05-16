@@ -13,6 +13,10 @@ import Connection.Classes.ClienteOfertaGuardada;
 
 public class ClienteOfertaGuardadaCRUD {
 
+    public static List<ClienteOfertaGuardada> findSavedOffersByCliente(int idCliente) throws SQLException {
+        return listarPorCliente(idCliente);
+    }
+
     public static List<ClienteOfertaGuardada> listarPorCliente(int idCliente) throws SQLException {
         List<ClienteOfertaGuardada> ofertas = new ArrayList<>();
         String sql = "SELECT p.idPacote, p.nome, p.descricao, p.preco_base, p.numero_pessoas_adultas, p.numero_criancas, cog.data_guardado, MIN(v.destino) AS destino, MIN(v.origem) AS origem, MIN(v.data_hora_partida) AS data_partida, MIN(v.data_hora_regresso) AS data_regresso, MIN(a.nome) AS alojamento_nome, MIN(a.tipo_estadia) AS tipo_estadia FROM CLIENTE_OFERTA_GUARDADA cog JOIN PACOTE p ON p.idPacote = cog.idPacote LEFT JOIN PACOTE_VIAGENS pv ON pv.idPacote = p.idPacote LEFT JOIN VIAGENS v ON v.idViagem = pv.idViagem LEFT JOIN PACOTE_ALOJAMENTO pa ON pa.idPacote = p.idPacote LEFT JOIN ALOJAMENTO a ON a.idAlojamento = pa.idAlojamento WHERE cog.idCliente = ? GROUP BY p.idPacote, p.nome, p.descricao, p.preco_base, p.numero_pessoas_adultas, p.numero_criancas, cog.data_guardado ORDER BY cog.data_guardado DESC";

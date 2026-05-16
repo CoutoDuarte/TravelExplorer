@@ -12,6 +12,10 @@ String loginUrl = request.getContextPath() + "/index.jsp?page=login";
         action="#"
         method="get"
         data-api-url="${pageContext.request.contextPath}/pesquisar"
+        data-search-url="${pageContext.request.contextPath}/pesquisar"
+        data-hotels-url="${pageContext.request.contextPath}/hotels"
+        data-sugestao-url="${pageContext.request.contextPath}/criar-sugestao"
+        data-guardar-url="${pageContext.request.contextPath}/guardar-viagem"
         data-cliente-logged-in="<%= clienteLoggedIn %>"
         data-login-url="<%= loginUrl %>"
         novalidate>
@@ -91,7 +95,7 @@ String loginUrl = request.getContextPath() + "/index.jsp?page=login";
 
     <div class="public-search-status" id="public-search-loading" hidden>
         <span class="public-search-status__spinner" aria-hidden="true"></span>
-        <p class="public-search-status__text">A procurar as melhores opções para a sua viagem...</p>
+        <p class="public-search-status__text">A procurar voos disponíveis...</p>
     </div>
 
     <div class="public-search-alert" id="public-search-error" role="alert" hidden>

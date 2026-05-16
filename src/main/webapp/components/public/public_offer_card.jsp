@@ -14,7 +14,7 @@
         <img
             src="${pageContext.request.contextPath}<%= img %>"
             alt="<%= request.getParameter("alt") != null ? request.getParameter("alt") : "" %>"
-            onerror="this.classList.add('is-hidden'); this.parentElement.classList.add('card__media--gradient-fallback');">
+            onerror="this.classList.add('is-hidden'); this.parentElement.classList.add('card__media--gradient', 'card__media--gradient-<%= gSeed %>', 'card__media--gradient-fallback');">
         <% } %>
     </div>
 
@@ -48,6 +48,4 @@
             </a>
         </div>
     </div>
-
-    
 </article>

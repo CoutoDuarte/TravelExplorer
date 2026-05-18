@@ -58,8 +58,36 @@ public final class BookingJsonHelper {
             + "\"chegada\":\"" + JsonUtil.escape(v.chegada) + "\","
             + "\"duracao\":\"" + JsonUtil.escape(v.duracao) + "\","
             + "\"precoPorPessoa\":" + formatNumber(v.precoPorPessoa) + ","
-            + "\"precoTotal\":" + formatNumber(v.precoTotal)
+            + "\"precoTotal\":" + formatNumber(v.precoTotal) + ","
+            + "\"numEscalas\":" + v.numEscalas + ","
+            + "\"segmentos\":" + segmentosJson(v.segmentos)
             + "}";
+    }
+
+    private static String segmentosJson(java.util.List<VooInfo> segmentos) {
+        if (segmentos == null || segmentos.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < segmentos.size(); i++) {
+            if (i > 0) {
+                json.append(',');
+            }
+            VooInfo s = segmentos.get(i);
+            json.append('{')
+                .append("\"companhia\":\"").append(JsonUtil.escape(s.companhia)).append("\",")
+                .append("\"numeroVoo\":\"").append(JsonUtil.escape(s.numeroVoo)).append("\",")
+                .append("\"origem\":\"").append(JsonUtil.escape(s.origem)).append("\",")
+                .append("\"destino\":\"").append(JsonUtil.escape(s.destino)).append("\",")
+                .append("\"aeroportoOrigem\":\"").append(JsonUtil.escape(s.aeroportoOrigem)).append("\",")
+                .append("\"aeroportoDestino\":\"").append(JsonUtil.escape(s.aeroportoDestino)).append("\",")
+                .append("\"partida\":\"").append(JsonUtil.escape(s.partida)).append("\",")
+                .append("\"chegada\":\"").append(JsonUtil.escape(s.chegada)).append("\",")
+                .append("\"duracao\":\"").append(JsonUtil.escape(s.duracao)).append("\"")
+                .append('}');
+        }
+        json.append(']');
+        return json.toString();
     }
 
     public static String hoteisOpcoesJson(List<HotelSugestao> hoteis) {

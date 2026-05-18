@@ -143,6 +143,17 @@ boolean selectedInvalid = selectedParam != null && !selectedParam.trim().isEmpty
                     <label for="createCriancas">Número de crianças</label>
                     <input type="number" id="createCriancas" name="numero_criancas" min="0" required>
                 </div>
+                <div>
+                    <label for="createTipo">Tipo</label>
+                    <select id="createTipo" name="tipo" required>
+                        <option value="Pacote">Pacote</option>
+                        <option value="Oferta">Oferta</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="createImagem">URL da imagem</label>
+                    <input type="url" id="createImagem" name="imagem_url" placeholder="https://...">
+                </div>
                 <div class="actions-row" style="margin-top: 1rem;">
                     <button class="btn btn-primary" type="submit">Criar pacote</button>
                     <button type="button" class="btn btn-secondary" id="staffOffersCancelCreate">Cancelar</button>
@@ -185,6 +196,18 @@ boolean selectedInvalid = selectedParam != null && !selectedParam.trim().isEmpty
                 <div>
                     <label for="editCriancas">Número de crianças</label>
                     <input type="number" id="editCriancas" name="numero_criancas" min="0" value="<%= selecionado.getNumCriancas() %>" required>
+                </div>
+                <div>
+                    <label for="editTipo">Tipo</label>
+                    <select id="editTipo" name="tipo" required>
+                        <option value="Pacote"<%= "Pacote".equals(selecionado.getTipo()) ? " selected" : "" %>>Pacote</option>
+                        <option value="Oferta"<%= "Oferta".equals(selecionado.getTipo()) ? " selected" : "" %>>Oferta</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="editImagem">URL da imagem</label>
+                    <% String imgEsc = selecionado.getImagemUrl() != null ? selecionado.getImagemUrl().replace("\"", "&quot;") : ""; %>
+                    <input type="url" id="editImagem" name="imagem_url" value="<%= imgEsc %>" placeholder="https://...">
                 </div>
                 <div class="actions-row" style="margin-top: 1rem;">
                     <button class="btn btn-primary" type="submit">Guardar alterações</button>

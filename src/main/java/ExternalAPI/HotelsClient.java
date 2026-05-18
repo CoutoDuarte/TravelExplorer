@@ -274,9 +274,20 @@ public class HotelsClient {
         if (hotelClass <= 0) {
             hotelClass = firstIntNear(block, "\"stars\"");
         }
-        h.categoria = hotelClass > 0 ? hotelClass + " estrelas" : "Hotel";
         double rate = extractOverallRating(block);
         h.rating = rate > 0 ? rate : 0;
+        if (h.rating > 0) {
+            if (h.rating <= 5 && Math.abs(h.rating - Math.round(h.rating)) < 0.01) {
+                int n = (int) Math.round(h.rating);
+                h.categoria = n + (n == 1 ? " estrela" : " estrelas");
+            } else {
+                h.categoria = String.format(java.util.Locale.forLanguageTag("pt-PT"), "%.1f avaliação", h.rating);
+            }
+        } else if (hotelClass > 0) {
+            h.categoria = hotelClass + (hotelClass == 1 ? " estrela" : " estrelas");
+        } else {
+            h.categoria = "Hotel";
+        }
         int rev = extractReviews(block);
         h.reviews = rev;
         h.precoEstimado = extractHotelPriceEuro(block);

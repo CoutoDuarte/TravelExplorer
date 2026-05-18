@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.util.ArrayList,Connection.Classes.Promocao,Connection.CRUD.PromocaoCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.util.ArrayList,Connection.Classes.Promocao,Connection.Classes.Pacote,Connection.CRUD.PromocaoCRUD,Connection.CRUD.PacoteCRUD" %>
 <%!
 String jspParamSafe(String value) {
     if (value == null) {
@@ -16,10 +16,16 @@ boolean homeLoggedIn = homeCliente || homeStaff;
 String homeCtx = request.getContextPath();
 
 List<Promocao> promocoesAtivas = new ArrayList<>();
+List<Pacote> ofertasHome = new ArrayList<>();
 try {
     promocoesAtivas = new PromocaoCRUD().findActive();
+    ofertasHome = new PacoteCRUD().findPublicOfertas(3);
 } catch (Exception ignored) {
 }
+java.text.DecimalFormatSymbols symH = new java.text.DecimalFormatSymbols(java.util.Locale.forLanguageTag("pt-PT"));
+symH.setDecimalSeparator(',');
+symH.setGroupingSeparator(' ');
+java.text.DecimalFormat dfHome = new java.text.DecimalFormat("#,##0.00", symH);
 
 java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy", java.util.Locale.forLanguageTag("pt-PT"));
 %>
@@ -91,13 +97,74 @@ java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeForma
                     String titleParam = jspParamSafe(titulo);
                     String textParam = jspParamSafe(desc.isEmpty() ? destino : desc);
                     String destParam = jspParamSafe(destino.isEmpty() ? "—" : destino);
+                    String cardTextParam = textParam.isEmpty() ? destParam : textParam;
+                    String gradientSeedParam = String.valueOf(seed);
                 %>
                 <jsp:include page="/components/public/public_category_card.jsp">
-                    <jsp:param name="gradientSeed" value="<%= String.valueOf(seed) %>" />
+                    <jsp:param name="gradientSeed" value="<%= gradientSeedParam %>" />
                     <jsp:param name="title" value="<%= titleParam %>" />
-                    <jsp:param name="text" value="<%= textParam.isEmpty() ? destParam : textParam %>" />
+                    <jsp:param name="text" value="<%= cardTextParam %>" />
                 </jsp:include>
                 <% } %>
+            </div>
+            <% } %>
+        </div>
+    </section>
+
+    <section class="public-page__section public-page__section--accent public-section--balanced">
+        <div class="container">
+            <jsp:include page="/components/shared/section_title.jsp">
+                <jsp:param name="eyebrow" value="Ofertas" />
+                <jsp:param name="heading" value="Ofertas em destaque" />
+                <jsp:param name="description" value="Seleção de ofertas públicas da equipa TravelExplorer." />
+                <jsp:param name="extraClass" value="section-title--home-ideas" />
+            </jsp:include>
+            <% if (ofertasHome.isEmpty()) { %>
+            <p class="text-muted">Não existem ofertas em destaque neste momento.</p>
+            <% } else { %>
+            <div class="cards-grid public-cards-grid">
+                <% for (Pacote op : ofertasHome) {
+                    String img = op.getImagemUrl() != null ? op.getImagemUrl().trim() : "";
+                    String titulo = op.getNome() != null ? op.getNome() : "Oferta";
+                    String desc = op.getDescricao() != null ? op.getDescricao() : "";
+                    if (desc.length() > 120) desc = desc.substring(0, 120) + "…";
+                    String preco = "Desde " + dfHome.format(op.getPrecoBase()) + " €";
+                    String tag2Txt = op.getNumAdultos() + " adultos";
+                    if (op.getNumCriancas() > 0) {
+                        tag2Txt = tag2Txt + ", " + op.getNumCriancas() + " crianças";
+                    }
+                    String extraTxt = "Ref. " + op.getIdPacote();
+                    String showSaveParam = homeCliente ? "true" : (homeLoggedIn ? "" : "guest");
+                    String imagemUrlParam = jspParamSafe(img);
+                    String altParam = jspParamSafe(titulo);
+                    String tag2Param = jspParamSafe(tag2Txt);
+                    String titleParam = jspParamSafe(titulo);
+                    String extraParam = jspParamSafe(extraTxt);
+                    String descParam = jspParamSafe(desc);
+                    String priceParam = jspParamSafe(preco);
+                    String idPacoteParam = String.valueOf(op.getIdPacote());
+                    String gradientSeedParam = String.valueOf((op.getIdPacote() % 3) + 1);
+                %>
+                <jsp:include page="/components/public/public_offer_card.jsp">
+                    <jsp:param name="imagemUrl" value="<%= imagemUrlParam %>" />
+                    <jsp:param name="alt" value="<%= altParam %>" />
+                    <jsp:param name="tag1" value="Oferta" />
+                    <jsp:param name="tag2" value="<%= tag2Param %>" />
+                    <jsp:param name="title" value="<%= titleParam %>" />
+                    <jsp:param name="origin" value="—" />
+                    <jsp:param name="destination" value="—" />
+                    <jsp:param name="extra" value="<%= extraParam %>" />
+                    <jsp:param name="description" value="<%= descParam %>" />
+                    <jsp:param name="price" value="<%= priceParam %>" />
+                    <jsp:param name="idPacote" value="<%= idPacoteParam %>" />
+                    <jsp:param name="gradientSeed" value="<%= gradientSeedParam %>" />
+                    <jsp:param name="showSave" value="<%= showSaveParam %>" />
+                    <jsp:param name="redirectPage" value="home" />
+                </jsp:include>
+                <% } %>
+            </div>
+            <div class="actions-row" style="margin-top: 1rem;">
+                <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=destinations">Ver todos os destinos</a>
             </div>
             <% } %>
         </div>

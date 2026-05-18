@@ -58,7 +58,62 @@ public class CriarSugestaoRequest {
         v.duracao = extractString(block, "duracao");
         v.precoPorPessoa = extractNumber(block, "precoPorPessoa");
         v.precoTotal = extractNumber(block, "precoTotal");
+        v.numEscalas = (int) Math.round(extractNumber(block, "numEscalas"));
+        v.segmentos = parseSegmentos(block, v);
         return v;
+    }
+
+    private static java.util.List<VooInfo> parseSegmentos(String block, VooInfo fallback) {
+        java.util.List<VooInfo> list = new java.util.ArrayList<>();
+        String key = "\"segmentos\"";
+        int idx = block.indexOf(key);
+        if (idx < 0) {
+            return list;
+        }
+        int start = block.indexOf('[', idx);
+        if (start < 0) {
+            return list;
+        }
+        int pos = start + 1;
+        while (pos < block.length()) {
+            while (pos < block.length() && Character.isWhitespace(block.charAt(pos))) {
+                pos++;
+            }
+            if (pos >= block.length() || block.charAt(pos) == ']') {
+                break;
+            }
+            if (block.charAt(pos) == ',') {
+                pos++;
+                continue;
+            }
+            if (block.charAt(pos) != '{') {
+                pos++;
+                continue;
+            }
+            int end = findObjectEnd(block, pos);
+            if (end < 0) {
+                break;
+            }
+            String segBlock = block.substring(pos, end + 1);
+            VooInfo seg = new VooInfo();
+            seg.companhia = extractString(segBlock, "companhia");
+            seg.numeroVoo = extractString(segBlock, "numeroVoo");
+            seg.origem = extractString(segBlock, "origem");
+            seg.destino = extractString(segBlock, "destino");
+            seg.aeroportoOrigem = extractString(segBlock, "aeroportoOrigem");
+            seg.aeroportoDestino = extractString(segBlock, "aeroportoDestino");
+            seg.partida = extractString(segBlock, "partida");
+            seg.chegada = extractString(segBlock, "chegada");
+            seg.duracao = extractString(segBlock, "duracao");
+            if (notBlank(seg.origem) || notBlank(seg.destino)) {
+                list.add(seg);
+            }
+            pos = end + 1;
+        }
+        if (list.isEmpty() && fallback != null && notBlank(fallback.origem)) {
+            list.add(fallback);
+        }
+        return list;
     }
 
     private static HotelSugestao parseHotel(String json, String field) {

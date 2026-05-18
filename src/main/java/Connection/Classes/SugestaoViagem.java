@@ -10,6 +10,7 @@ public class SugestaoViagem {
     public String descricao;
     public String hotelSugerido;
     public String transporteSugerido;
+    public TransporteSugerido transporte;
     public List<String> atividades = new ArrayList<>();
     public String imagemKeywords;
     public double precoEstimadoTotal;
@@ -182,6 +183,79 @@ public class SugestaoViagem {
             pos = end + 1;
         }
         return hotels;
+    }
+
+    private static TransporteSugerido parseTransporteObject(String json) {
+        String block = extractNestedObject(json, "transporte");
+        if (block.isBlank()) {
+            return null;
+        }
+        TransporteSugerido t = new TransporteSugerido();
+        t.tipo = extractStringField(block, "tipo");
+        t.origem = extractStringField(block, "origem");
+        t.destino = extractStringField(block, "destino");
+        t.duracao = extractStringField(block, "duracao");
+        t.descricao = extractStringField(block, "descricao");
+        t.precoEstimado = extractNumberField(block, "precoEstimado");
+        if (t.tipo == null || t.tipo.isBlank()) {
+            if (t.descricao == null || t.descricao.isBlank()) {
+                return null;
+            }
+        }
+        return t;
+    }
+
+    private static String formatTransporteTexto(TransporteSugerido t) {
+        if (t == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        if (t.tipo != null && !t.tipo.isBlank()) {
+            sb.append(t.tipo.trim());
+        }
+        if (t.origem != null && !t.origem.isBlank() && t.destino != null && !t.destino.isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(": ");
+            }
+            sb.append(t.origem.trim()).append(" → ").append(t.destino.trim());
+        }
+        if (t.duracao != null && !t.duracao.isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(t.duracao.trim());
+        }
+        if (t.descricao != null && !t.descricao.isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(". ");
+            }
+            sb.append(t.descricao.trim());
+        }
+        return sb.toString().trim();
+    }
+
+    private static String extractNestedObject(String json, String field) {
+        String key = "\"" + field + "\"";
+        int idx = json.indexOf(key);
+        if (idx < 0) {
+            return "";
+        }
+        int colon = json.indexOf(':', idx);
+        if (colon < 0) {
+            return "";
+        }
+        int i = colon + 1;
+        while (i < json.length() && Character.isWhitespace(json.charAt(i))) {
+            i++;
+        }
+        if (i >= json.length() || json.charAt(i) != '{') {
+            return "";
+        }
+        int end = findObjectEnd(json, i);
+        if (end < 0) {
+            return "";
+        }
+        return json.substring(i, end + 1);
     }
 
     private static int findObjectEnd(String json, int start) {

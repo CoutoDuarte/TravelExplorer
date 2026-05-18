@@ -203,8 +203,31 @@ public class PagamentoCRUD {
     }
 
     // Mapper privado
+    public Pagamento findFirstByReserva(int idReserva) {
+        List<Pagamento> list = findByReserva(idReserva);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    public boolean markAsPaid(int idPagamento, int idCliente, int idReserva, String metodo, String referencia) {
+        String sql = "UPDATE PAGAMENTO SET valor = valor, metodo = ?, data_pagamento = ?, estado = ?, referencia = ? WHERE idPagamento = ? AND idCliente = ? AND idReserva = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, metodo);
+            stmt.setDate(2, new Date(System.currentTimeMillis()));
+            stmt.setString(3, "Pago");
+            stmt.setString(4, referencia);
+            stmt.setInt(5, idPagamento);
+            stmt.setInt(6, idCliente);
+            stmt.setInt(7, idReserva);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private Pagamento map(ResultSet rs) throws SQLException {
-        return new Pagamento(
+        Pagamento p = new Pagamento(
             rs.getInt("idPagamento"),
             rs.getFloat("valor"),
             rs.getString("metodo"),
@@ -212,5 +235,11 @@ public class PagamentoCRUD {
             rs.getInt("idCliente"),
             rs.getInt("idReserva")
         );
+        try {
+            p.setEstado(rs.getString("estado"));
+            p.setReferencia(rs.getString("referencia"));
+        } catch (SQLException ignored) {
+        }
+        return p;
     }
 }

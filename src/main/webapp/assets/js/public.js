@@ -789,6 +789,62 @@ function safeHotelImageUrl(raw) {
   return /^https?:\/\//i.test(u) ? u : '';
 }
 
+function formatHotelBadge(hotel) {
+  if (!hotel) return '—';
+  const rating = Number(hotel.rating);
+  if (!Number.isNaN(rating) && rating > 0) {
+    if (rating <= 5 && Math.abs(rating - Math.round(rating)) < 0.01) {
+      return String(Math.round(rating));
+    }
+    return rating.toFixed(1);
+  }
+  const cat = decodeApiText(hotel.categoria || '').trim();
+  if (/^hotel$/i.test(cat)) return 'Hotel';
+  const starMatch = cat.match(/(\d+)\s*estrelas?/i);
+  if (starMatch) return starMatch[1];
+  if (cat && /\d+([.,]\d+)?\s*avalia/i.test(cat)) {
+    const m = cat.match(/(\d+([.,]\d+)?)/);
+    if (m) return m[1].replace(',', '.');
+  }
+  if (cat) return cat.length > 12 ? cat.slice(0, 12) : cat;
+  return '—';
+}
+
+function formatHotelLabel(hotel) {
+  if (!hotel) return 'Classificação não disponível';
+  const cat = decodeApiText(hotel.categoria || '').trim();
+  if (cat && /^hotel$/i.test(cat)) return 'Hotel';
+  if (cat && !/^hotel$/i.test(cat)) {
+    const starMatch = cat.match(/(\d+)\s*estrelas?/i);
+    if (starMatch) {
+      const n = parseInt(starMatch[1], 10);
+      if (n >= 1 && n <= 5) return `${n} ${n === 1 ? 'estrela' : 'estrelas'}`;
+    }
+    if (/\d+([.,]\d+)?\s*avalia/i.test(cat)) return cat;
+    if (cat.length > 0) return cat;
+  }
+  const rating = Number(hotel.rating);
+  if (!Number.isNaN(rating) && rating > 0) {
+    if (rating <= 5 && Math.abs(rating - Math.round(rating)) < 0.01) {
+      const n = Math.round(rating);
+      return `${n} ${n === 1 ? 'estrela' : 'estrelas'}`;
+    }
+    return `${rating.toFixed(1)} avaliação`;
+  }
+  return 'Classificação não disponível';
+}
+
+function formatHotelRatingMeta(hotel) {
+  const rating = Number(hotel?.rating);
+  const reviews = Number(hotel?.reviews);
+  if (Number.isNaN(rating) || rating <= 0) return '';
+  const parts = [`${rating.toFixed(1)} ★`];
+  if (!Number.isNaN(reviews) && reviews > 0) {
+    parts.push(`${reviews} avaliações`);
+  }
+  return parts.join(' ');
+}
+
 function renderHotelCardsSelectable(hotels) {
   if (!hotels.length) {
     return '<p class="te-empty">Sem opções de alojamento disponíveis.</p>';
@@ -797,13 +853,12 @@ function renderHotelCardsSelectable(hotels) {
     const id = `hotel-${index}`;
     const gradientStyle = buildGradientStyle(hotel.nome || hotel.zona || 'hotel', index + 1);
     const imgSrc = safeHotelImageUrl(hotel.imagemUrl);
-    const rating = Number(hotel.rating);
     const reviews = Number(hotel.reviews);
-    const metaParts = [];
-    if (!Number.isNaN(rating) && rating > 0) metaParts.push(`${rating.toFixed(1)} ★`);
-    if (!Number.isNaN(reviews) && reviews > 0) metaParts.push(`${reviews} avaliações`);
-    const metaLine = metaParts.length ? `<p class="te-hotel-card__meta">${escapeHtml(metaParts.join(' · '))}</p>` : '';
-    const categoryLine = hotel.categoria ? `<p class="te-hotel-card__category">${escapeHtml(decodeApiText(hotel.categoria))}</p>` : '';
+    const hotelBadge = formatHotelBadge(hotel);
+    const hotelLabel = formatHotelLabel(hotel);
+    const ratingMeta = formatHotelRatingMeta(hotel);
+    const metaLine = ratingMeta ? `<p class="te-hotel-card__meta">${escapeHtml(ratingMeta)}</p>` : '';
+    const categoryLine = hotelLabel ? `<p class="te-hotel-card__category">${escapeHtml(hotelLabel)}</p>` : '';
     const chips = renderHotelAmenityChips(hotel.amenities, 3);
     const visualInner = imgSrc
       ? `<img class="te-hotel-card__photo" src="${escapeHtml(imgSrc)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'"><div class="te-hotel-card__shade"></div>`
@@ -813,7 +868,7 @@ function renderHotelCardsSelectable(hotels) {
       <article class="te-hotel-card te-selectable" data-hotel-id="${id}">
         <div class="te-hotel-card__visual" style="${gradientStyle}">
           ${visualInner}
-          <span class="te-hotel-card__visual-badge">${escapeHtml(decodeApiText(hotel.categoria || 'Opção sugerida'))}</span>
+          <span class="te-hotel-card__visual-badge">${escapeHtml(hotelBadge || '—')}</span>
           <strong class="te-hotel-card__visual-title">${escapeHtml(decodeApiText(hotel.nome))}</strong>
         </div>
         <div class="te-hotel-card__body">
@@ -842,15 +897,41 @@ function renderFlightListSelectable(voos, prefix, emptyMessage) {
   return `<div class="te-flight-list">${voos.map((voo, index) => renderFlightSelectable(voo, `${prefix}-${index}`)).join('')}</div>`;
 }
 
+function formatFlightStopsLabel(voo) {
+  const escalas = Number(voo?.numEscalas);
+  if (!Number.isNaN(escalas) && escalas >= 0) {
+    if (escalas === 0) return 'Direto';
+    if (escalas === 1) return '1 escala';
+    return `${escalas} escalas`;
+  }
+  const segs = voo?.segmentos;
+  if (Array.isArray(segs) && segs.length > 1) {
+    const n = segs.length - 1;
+    if (n === 1) return '1 escala';
+    return `${n} escalas`;
+  }
+  return 'Direto';
+}
+
 function renderFlightSelectable(voo, id) {
   const dep = formatTimeShort(voo.partida);
   const arr = formatTimeShort(voo.chegada);
+  const stops = formatFlightStopsLabel(voo);
+  const segments = Array.isArray(voo.segmentos) && voo.segmentos.length > 1 ? voo.segmentos : null;
+  const segmentDetails = segments
+    ? segments.map((seg, idx) => `
+        <section>
+          <h5>Segmento ${idx + 1}</h5>
+          <p>${escapeHtml(decodeApiText(seg.origem || ''))} → ${escapeHtml(decodeApiText(seg.destino || ''))} · ${escapeHtml(decodeApiText(seg.numeroVoo || ''))}</p>
+        </section>`).join('')
+    : '';
   return `
     <article class="te-flight-row te-selectable" data-flight-id="${id}">
       <div class="te-flight-row__main">
         <div class="te-flight-row__airline">
           <strong>${escapeHtml(decodeApiText(voo.companhia || 'Companhia'))}</strong>
           <span>${escapeHtml(decodeApiText(voo.numeroVoo || ''))}</span>
+          <span class="te-flight-row__stops">${escapeHtml(stops)}</span>
         </div>
         <div class="te-flight-row__leg">
           <span class="te-flight-row__code">${escapeHtml(decodeApiText(voo.origem || ''))}</span>
@@ -877,7 +958,9 @@ function renderFlightSelectable(voo, id) {
           <section><h5>Destino</h5><p>${escapeHtml(decodeApiText(voo.aeroportoDestino || voo.destino || '—'))}</p></section>
           <section><h5>Partida</h5><p>${escapeHtml(formatDateTime(voo.partida))}</p></section>
           <section><h5>Chegada</h5><p>${escapeHtml(formatDateTime(voo.chegada))}</p></section>
+          <section><h5>Escalas</h5><p>${escapeHtml(stops)}</p></section>
           <section><h5>Preço por pessoa</h5><p>${formatEuro(voo.precoPorPessoa)}</p></section>
+          ${segmentDetails}
         </div>
       </div>
     </article>
@@ -1130,15 +1213,16 @@ function openHotelDetailsModal(container, hotel, id) {
 function renderHotelDetailsContent(hotel, id) {
   const gradientStyle = buildGradientStyle(hotel.nome || hotel.zona || 'hotel', 2);
   const imgSrc = safeHotelImageUrl(hotel.imagemUrl);
-  const rating = Number(hotel.rating);
   const reviews = Number(hotel.reviews);
+  const hotelLabel = formatHotelLabel(hotel);
+  const ratingMeta = formatHotelRatingMeta(hotel);
   const visual = imgSrc
     ? `<div class="te-hotel-detail__visual" style="${gradientStyle}"><img src="${escapeHtml(imgSrc)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'"></div>`
     : `<div class="te-hotel-detail__visual te-hotel-detail__visual--fallback" style="${gradientStyle}"></div>`;
-  const ratingLine = !Number.isNaN(rating) && rating > 0
-    ? `<span class="te-hotel-detail__rating">${rating.toFixed(1)} ★${!Number.isNaN(reviews) && reviews > 0 ? ` · ${reviews} avaliações` : ''}</span>`
-    : '';
-  const categoryLine = hotel.categoria ? `<span class="te-hotel-detail__category">${escapeHtml(decodeApiText(hotel.categoria))}</span>` : '';
+  const ratingLine = ratingMeta
+    ? `<span class="te-hotel-detail__rating">${escapeHtml(ratingMeta)}${!Number.isNaN(reviews) && reviews > 0 ? ` · ${reviews} avaliações` : ''}</span>`
+    : (!Number.isNaN(reviews) && reviews > 0 ? `<span class="te-hotel-detail__rating">${reviews} avaliações</span>` : '');
+  const categoryLine = hotelLabel ? `<span class="te-hotel-detail__category">${escapeHtml(hotelLabel)}</span>` : '';
   const zoneLine = hotel.zona ? `<p class="te-hotel-detail__zone">${escapeHtml(decodeApiText(hotel.zona))}</p>` : '';
   const priceLine = hotel.precoEstimado ? `<p class="te-hotel-detail__price">${formatEuro(hotel.precoEstimado)} <small>estimado</small></p>` : '';
   const chips = renderHotelAmenityChips(hotel.amenities, 8).replace('te-hotel-card__chips', 'te-hotel-detail__chips');
@@ -1182,7 +1266,7 @@ function renderWizardPreSummary(container) {
   if (tripSelection.hotel) {
     hotelBody = `
       <p><strong>${escapeHtml(decodeApiText(tripSelection.hotel.nome))}</strong></p>
-      <p>${escapeHtml(decodeApiText(tripSelection.hotel.zona || ''))} · ${escapeHtml(decodeApiText(tripSelection.hotel.categoria || ''))}</p>
+      <p>${escapeHtml(decodeApiText(tripSelection.hotel.zona || ''))} · ${escapeHtml(formatHotelLabel(tripSelection.hotel))}</p>
       <p class="te-review-card__price">${formatEuro(tripSelection.hotel.precoEstimado)} estimado</p>
     `;
   }
@@ -1291,7 +1375,7 @@ function renderFinalPackage(container) {
       <article class="te-package-mini-card">
         <h4>Alojamento</h4>
         <p><strong>${escapeHtml(decodeApiText(tripSelection.hotel.nome))}</strong></p>
-        <p>${escapeHtml(decodeApiText(tripSelection.hotel.zona || ''))}</p>
+        <p>${escapeHtml(decodeApiText(tripSelection.hotel.zona || ''))} · ${escapeHtml(formatHotelLabel(tripSelection.hotel))}</p>
         <p class="te-package-mini-card__price">${formatEuro(tripSelection.hotel.precoEstimado)} estimado</p>
       </article>`;
   } else {
@@ -1484,7 +1568,7 @@ async function guardarViagem(container) {
 function renderActivitiesList(atividades) {
   if (!Array.isArray(atividades) || !atividades.length) return '';
   const items = atividades
-    .slice(0, 6)
+    .slice(0, 7)
     .map((item) => `<li class="te-activity-pill">${escapeHtml(decodeApiText(item))}</li>`)
     .join('');
   return `<div class="te-package-card__activities"><h4>Atividades sugeridas</h4><ul class="te-activity-grid">${items}</ul></div>`;

@@ -172,14 +172,47 @@ public class FlightsClient {
 
     private VooInfo parseFirstFlightInOption(String block, int passageiros) {
         double optionPrice = extractNumber(block, "price");
+        java.util.List<VooInfo> segments = parseAllFlightSegments(block, optionPrice, passageiros);
+        if (segments.isEmpty()) {
+            return null;
+        }
+        VooInfo first = segments.get(0);
+        VooInfo last = segments.get(segments.size() - 1);
+        VooInfo v = new VooInfo();
+        v.companhia = first.companhia;
+        v.numeroVoo = first.numeroVoo;
+        v.origem = first.origem;
+        v.destino = last.destino;
+        v.aeroportoOrigem = first.aeroportoOrigem;
+        v.aeroportoDestino = last.aeroportoDestino;
+        v.partida = first.partida;
+        v.chegada = last.chegada;
+        v.duracao = first.duracao;
+        v.precoTotal = optionPrice;
+        v.precoPorPessoa = passageiros > 0 ? v.precoTotal / passageiros : v.precoTotal;
+        v.segmentos = segments;
+        v.numEscalas = Math.max(0, segments.size() - 1);
+        return v;
+    }
+
+    private java.util.List<VooInfo> parseAllFlightSegments(String block, double optionPrice, int passageiros) {
+        java.util.List<VooInfo> segments = new java.util.ArrayList<>();
         int flightsIdx = block.indexOf("\"flights\"");
-        if (flightsIdx < 0) return null;
+        if (flightsIdx < 0) {
+            return segments;
+        }
         int arrayStart = block.indexOf('[', flightsIdx);
-        if (arrayStart < 0) return null;
+        if (arrayStart < 0) {
+            return segments;
+        }
         int pos = arrayStart + 1;
         while (pos < block.length()) {
-            while (pos < block.length() && Character.isWhitespace(block.charAt(pos))) pos++;
-            if (pos >= block.length() || block.charAt(pos) == ']') return null;
+            while (pos < block.length() && Character.isWhitespace(block.charAt(pos))) {
+                pos++;
+            }
+            if (pos >= block.length() || block.charAt(pos) == ']') {
+                break;
+            }
             if (block.charAt(pos) == ',') {
                 pos++;
                 continue;
@@ -189,10 +222,16 @@ public class FlightsClient {
                 continue;
             }
             int flightEnd = findObjectEnd(block, pos);
-            if (flightEnd < 0) return null;
-            return parseFlightSegment(block.substring(pos, flightEnd + 1), optionPrice, passageiros);
+            if (flightEnd < 0) {
+                break;
+            }
+            VooInfo seg = parseFlightSegment(block.substring(pos, flightEnd + 1), optionPrice, passageiros);
+            if (seg != null) {
+                segments.add(seg);
+            }
+            pos = flightEnd + 1;
         }
-        return null;
+        return segments;
     }
 
     private int findArrayStart(String json, String arrayName) {

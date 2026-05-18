@@ -1,6 +1,7 @@
 package Connection.CRUD;
 
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -228,6 +229,25 @@ public class ClienteCRUD {
     }
 
     // Mapeia ResultSet → Cliente
+    public boolean updateBilling(int idCliente, String morada, int nif, LocalDate dataNascimento) {
+        String sql = "UPDATE CLIENTE SET morada = ?, NIF = ?, data_nascimento = ? WHERE idCliente = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, morada);
+            stmt.setInt(2, nif);
+            if (dataNascimento != null) {
+                stmt.setDate(3, java.sql.Date.valueOf(dataNascimento));
+            } else {
+                stmt.setNull(3, java.sql.Types.DATE);
+            }
+            stmt.setInt(4, idCliente);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private Cliente map(ResultSet rs) throws SQLException {
         Date dataNascSql = rs.getDate("data_nascimento");
         return new Cliente(

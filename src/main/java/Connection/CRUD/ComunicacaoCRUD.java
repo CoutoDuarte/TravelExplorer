@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,11 +32,104 @@ public class ComunicacaoCRUD {
         }
     }
 
+    public List<Comunicacao> findSupportTickets() {
+        List<Comunicacao> list = new ArrayList<>();
+        String sql = "SELECT idComunicacao, titulo, canal, segmento, data_comunicacao, estado, mensagem, idCliente, idReserva, resposta, data_resposta, idFuncionarioResposta FROM COMUNICACAO WHERE canal = 'Área de Cliente' ORDER BY idComunicacao DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapExtended(rs));
+            }
+        } catch (SQLException e) {
+            return findAll();
+        }
+        return list;
+    }
+
+    public Comunicacao findByReserva(int idReserva) {
+        String sql = "SELECT idComunicacao, titulo, canal, segmento, data_comunicacao, estado, mensagem, idCliente, idReserva, resposta, data_resposta, idFuncionarioResposta FROM COMUNICACAO WHERE idReserva = ? ORDER BY idComunicacao DESC LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idReserva);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapExtended(rs);
+                }
+            }
+        } catch (SQLException e) {
+            return null;
+        }
+        return null;
+    }
+
+    public boolean createSupport(Comunicacao c) {
+        int id = getNextId();
+        String sql = "INSERT INTO COMUNICACAO (idComunicacao, titulo, canal, segmento, data_comunicacao, estado, mensagem, idCliente, idReserva) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, id);
+            stmt.setString(2, c.getTitulo());
+            stmt.setString(3, c.getCanal());
+            stmt.setString(4, c.getSegmento());
+            setDate(stmt, 5, c.getDataComunicacao());
+            stmt.setString(6, c.getEstado());
+            stmt.setString(7, c.getMensagem());
+            setIdCliente(stmt, 8, c.getIdCliente());
+            if (c.getIdReserva() > 0) {
+                stmt.setInt(9, c.getIdReserva());
+            } else {
+                stmt.setNull(9, Types.INTEGER);
+            }
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            return create(c);
+        }
+    }
+
+    public boolean answerSupport(int idComunicacao, String resposta, int idFuncionario) {
+        String sql = "UPDATE COMUNICACAO SET resposta = ?, data_resposta = ?, idFuncionarioResposta = ?, estado = ? WHERE idComunicacao = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, resposta);
+            stmt.setTimestamp(2, java.sql.Timestamp.valueOf(LocalDateTime.now()));
+            stmt.setInt(3, idFuncionario);
+            stmt.setString(4, "Respondido");
+            stmt.setInt(5, idComunicacao);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private Comunicacao map(ResultSet rs) throws SQLException {
+        return mapExtended(rs);
+    }
+
+    private Comunicacao mapExtended(ResultSet rs) throws SQLException {
         Date dc = rs.getDate("data_comunicacao");
         int idC = rs.getInt("idCliente");
         if (rs.wasNull()) {
             idC = 0;
+        }
+        int idReserva = 0;
+        String resposta = null;
+        LocalDateTime dataResposta = null;
+        int idFunc = 0;
+        try {
+            idReserva = rs.getInt("idReserva");
+            if (rs.wasNull()) {
+                idReserva = 0;
+            }
+            resposta = rs.getString("resposta");
+            java.sql.Timestamp tr = rs.getTimestamp("data_resposta");
+            dataResposta = tr != null ? tr.toLocalDateTime() : null;
+            idFunc = rs.getInt("idFuncionarioResposta");
+            if (rs.wasNull()) {
+                idFunc = 0;
+            }
+        } catch (SQLException ignored) {
         }
         return new Comunicacao(
             rs.getInt("idComunicacao"),
@@ -45,7 +139,11 @@ public class ComunicacaoCRUD {
             dc != null ? dc.toLocalDate() : null,
             rs.getString("estado"),
             rs.getString("mensagem"),
-            idC
+            idC,
+            idReserva,
+            resposta,
+            dataResposta,
+            idFunc
         );
     }
 

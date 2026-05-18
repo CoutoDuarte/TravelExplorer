@@ -288,15 +288,42 @@ public class ReservaCRUD {
     }
 
     // Mapper privado
+    public boolean updateEstado(int idReserva, int idCliente, String estado) {
+        String sql = "UPDATE RESERVA SET estado = ? WHERE idReserva = ? AND idCliente = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, estado);
+            stmt.setInt(2, idReserva);
+            stmt.setInt(3, idCliente);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     private Reserva map(ResultSet rs) throws SQLException {
-    	Date d = rs.getDate("data_reserva");
-    	return new Reserva(
-    	    rs.getInt("idReserva"),
-    	    d != null ? d.toLocalDate() : null,
-    	    rs.getFloat("total_pagar"),
-    	    rs.getString("estado"),
-    	    rs.getInt("idCliente"),
-    	    rs.getInt("idPacote")
-    	);
+        Date d = rs.getDate("data_reserva");
+        Reserva r = new Reserva(
+            rs.getInt("idReserva"),
+            d != null ? d.toLocalDate() : null,
+            rs.getFloat("total_pagar"),
+            rs.getString("estado"),
+            rs.getInt("idCliente"),
+            rs.getInt("idPacote")
+        );
+        try {
+            r.setOrigem(rs.getString("origem"));
+            r.setDestino(rs.getString("destino"));
+            Date dp = rs.getDate("data_partida");
+            r.setDataPartida(dp != null ? dp.toLocalDate() : null);
+            Date dr = rs.getDate("data_regresso");
+            r.setDataRegresso(dr != null ? dr.toLocalDate() : null);
+            r.setAdultos(rs.getInt("adultos"));
+            r.setCriancas(rs.getInt("criancas"));
+            r.setTitulo(rs.getString("titulo"));
+        } catch (SQLException ignored) {
+        }
+        return r;
     }
 }

@@ -34,6 +34,20 @@ public class ClienteOfertaGuardadaCRUD {
         return ofertas;
     }
 
+    public static boolean isGuardada(int idCliente, int idPacote) {
+        String sql = "SELECT 1 FROM CLIENTE_OFERTA_GUARDADA WHERE idCliente = ? AND idPacote = ? LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idCliente);
+            stmt.setInt(2, idPacote);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     public static boolean guardarOferta(int idCliente, int idPacote) throws SQLException {
         String sql = "INSERT INTO CLIENTE_OFERTA_GUARDADA (idCliente, idPacote) VALUES (?, ?) ON DUPLICATE KEY UPDATE data_guardado = CURRENT_TIMESTAMP";
 

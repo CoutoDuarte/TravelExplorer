@@ -154,7 +154,7 @@ public class OpenAIClient {
         String dest = pedido != null && pedido.destino != null ? pedido.destino.trim() : "";
         s.titulo = dest.isBlank() ? "A sua viagem" : "Pacote para " + dest;
         s.descricao = "Resumo da viagem com base nas escolhas que fez. Os valores são estimativas da agência.";
-        s.transporteSugerido = "Transferes e deslocações locais conforme o destino";
+        s.transporteSugerido = buildFallbackTransport(pedido);
         s.resumoFinal = s.descricao;
         s.hotelSugerido = pedido != null && pedido.hotelSelecionado != null
                 ? safeText(pedido.hotelSelecionado.nome) : "";
@@ -170,8 +170,9 @@ public class OpenAIClient {
         }
         s.precoEstimadoTotal = total;
         s.imagemKeywords = "";
-        s.atividades.add("Explorar o centro histórico");
-        s.atividades.add("Tempo livre para descanso");
+        for (String atividade : buildFallbackAtividades(dest)) {
+            s.atividades.add(atividade);
+        }
         return s;
     }
 
@@ -339,9 +340,17 @@ public class OpenAIClient {
         sb.append("- Não peças imagens nem palavras-chave de imagem.\n");
         sb.append("- Usa português de Portugal, textos curtos e elegantes.\n");
         sb.append("- O precoEstimadoTotal deve ser coerente com os preços já escolhidos (voos + hotel se existir).\n");
-        sb.append("- Usa exatamente estas chaves: titulo, descricao, transporteSugerido, atividades, precoEstimadoTotal, resumoFinal.\n");
+        sb.append("- Usa exatamente estas chaves: titulo, descricao, transporte, transporteSugerido, atividades, precoEstimadoTotal, resumoFinal.\n");
+        sb.append("- transporte deve ser um objeto JSON com: tipo (Metro, Táxi, Uber/Bolt, Autocarro, Comboio, Transfer privado ou Shuttle), origem, destino, duracao, descricao, precoEstimado.\n");
+        sb.append("- O titulo deve ser apelativo e específico ao destino (ex.: \"Escapadinha romântica em Lisboa\").\n");
+        sb.append("- A descricao deve ser curta mas atrativa (2-3 frases).\n");
+        sb.append("- Inclui entre 5 e 7 atividades CONCRETAS e específicas do destino (monumentos, bairros, experiências reais). Evita frases genéricas.\n");
+        sb.append("- PROIBIDO usar atividades vagas como \"Explorar o centro histórico\", \"Tempo livre para descanso\" ou \"Visitar pontos turísticos\".\n");
+        sb.append("- transporteSugerido deve ser realista: indica tipo (Metro, Táxi, Uber/Bolt, Autocarro, Shuttle, Comboio, Transfer privado), rota de-para, duração aproximada e alternativa breve.\n");
+        sb.append("- PROIBIDO usar frases genéricas de transporte como \"Transfers e deslocações locais conforme o destino\".\n");
+        sb.append("- Exemplo de transporteSugerido: \"Metro do Aeroporto Humberto Delgado até ao centro de Lisboa, cerca de 25 minutos. Alternativa: táxi/Uber até ao hotel, cerca de 20 minutos.\"\n");
         appendExpectedFinalJsonShape(sb);
-        sb.append("Inclui entre 3 e 5 atividades. O resumoFinal deve ser um parágrafo curto de agência.\n");
+        sb.append("O resumoFinal deve ser um parágrafo curto de agência de viagens.\n");
         return sb.toString();
     }
 
@@ -379,7 +388,11 @@ public class OpenAIClient {
         sb.append("- ").append(safeText(h.nome)).append(" | ").append(safeText(h.categoria))
           .append(" | ").append(safeText(h.zona)).append(" | preço ").append(formatEuroCompact(h.precoEstimado));
         if (h.rating > 0) {
-            sb.append(" | ").append(h.rating).append(" estrelas");
+            if (h.rating <= 5 && Math.abs(h.rating - Math.round(h.rating)) < 0.01) {
+                sb.append(" | ").append(Math.round(h.rating)).append(" estrelas");
+            } else {
+                sb.append(" | ").append(String.format(java.util.Locale.forLanguageTag("pt-PT"), "%.1f avaliação", h.rating));
+            }
         }
         if (h.reviews > 0) {
             sb.append(" | ").append(h.reviews).append(" avaliações");
@@ -387,12 +400,55 @@ public class OpenAIClient {
         sb.append('\n');
     }
 
+    private String buildFallbackTransport(CriarSugestaoRequest pedido) {
+        String dest = pedido != null && pedido.destino != null ? pedido.destino.trim() : "";
+        String aeroporto = dest.isEmpty() ? "aeroporto de chegada" : "aeroporto de " + dest;
+        String alvo = dest.isEmpty() ? "o alojamento" : dest;
+        if (pedido != null && pedido.hotelSelecionado != null && !safeText(pedido.hotelSelecionado.zona).isEmpty()) {
+            alvo = pedido.hotelSelecionado.zona;
+        } else if (pedido != null && pedido.hotelSelecionado != null && !safeText(pedido.hotelSelecionado.nome).isEmpty()) {
+            alvo = pedido.hotelSelecionado.nome;
+        }
+        return "Transfer do " + aeroporto + " até " + alvo + ", cerca de 25 minutos. Alternativa: táxi ou Uber/Bolt, cerca de 20 minutos.";
+    }
+
+    private java.util.List<String> buildFallbackAtividades(String destino) {
+        java.util.List<String> list = new java.util.ArrayList<>();
+        String d = destino != null ? destino.trim().toLowerCase() : "";
+        if (d.contains("lisboa")) {
+            list.add("Visita ao Mosteiro dos Jerónimos e Torre de Belém");
+            list.add("Passeio pelo Chiado e Bairro Alto");
+            list.add("Miradouro da Senhora do Monte ao final da tarde");
+            list.add("Passeio de elétrico 28 pelo centro histórico");
+            list.add("Jantar típico com fado em Alfama");
+            list.add("Café e pastel de nata na Fábrica de Pastéis de Belém");
+        } else if (d.contains("porto")) {
+            list.add("Cruzeiro no Douro com vista para as margens do Porto");
+            list.add("Visita à Livraria Lello e à estação de São Bento");
+            list.add("Degustação de vinho na Ribeira");
+            list.add("Passeio pela Ponte Dom Luís e Foz do Douro");
+            list.add("Francesinha num restaurante tradicional");
+        } else if (!d.isEmpty()) {
+            list.add("Visita guiada ao centro histórico de " + destino);
+            list.add("Passeio gastronómico com especialidades locais");
+            list.add("Miradouro ou ponto panorâmico emblemático");
+            list.add("Museu ou monumento principal da cidade");
+            list.add("Tarde livre para compras e cafés locais");
+        } else {
+            list.add("Visita ao centro histórico da cidade");
+            list.add("Experiência gastronómica local");
+            list.add("Passeio panorâmico ao final do dia");
+        }
+        return list;
+    }
+
     private void appendExpectedFinalJsonShape(StringBuilder sb) {
         sb.append("{\n");
         sb.append("  \"titulo\": \"...\",\n");
         sb.append("  \"descricao\": \"...\",\n");
+        sb.append("  \"transporte\": {\"tipo\":\"Metro\",\"origem\":\"...\",\"destino\":\"...\",\"duracao\":\"25 minutos\",\"descricao\":\"...\",\"precoEstimado\":4.0},\n");
         sb.append("  \"transporteSugerido\": \"...\",\n");
-        sb.append("  \"atividades\": [\"...\", \"...\", \"...\"],\n");
+        sb.append("  \"atividades\": [\"...\", \"...\", \"...\", \"...\", \"...\"],\n");
         sb.append("  \"precoEstimadoTotal\": 0.0,\n");
         sb.append("  \"resumoFinal\": \"...\"\n");
         sb.append("}\n");

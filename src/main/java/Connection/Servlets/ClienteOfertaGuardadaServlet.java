@@ -19,8 +19,13 @@ public class ClienteOfertaGuardadaServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         Object userIdObj = session != null ? session.getAttribute("userId") : null;
 
-        if (userIdObj == null) {
-            resp.sendRedirect(req.getContextPath() + "/index.jsp?page=login");
+        if (userIdObj == null || !Boolean.TRUE.equals(session.getAttribute("auth")) || !"cliente".equals(session.getAttribute("userType"))) {
+            String redirect = req.getParameter("redirect");
+            if (redirect != null && !redirect.isEmpty()) {
+                resp.sendRedirect(req.getContextPath() + "/index.jsp?page=login&redirect=" + java.net.URLEncoder.encode(redirect, StandardCharsets.UTF_8));
+            } else {
+                resp.sendRedirect(req.getContextPath() + "/index.jsp?page=login");
+            }
             return;
         }
 
@@ -28,6 +33,14 @@ public class ClienteOfertaGuardadaServlet extends HttpServlet {
             int idCliente = Integer.parseInt(userIdObj.toString());
             int idPacote = Integer.parseInt(req.getParameter("idPacote"));
             String action = req.getParameter("action");
+            String back = req.getParameter("redirect");
+            if (back == null || back.isEmpty()) {
+                back = req.getContextPath() + "/index.jsp?page=saved-offers";
+            } else if (!back.startsWith("/")) {
+                back = req.getContextPath() + "/index.jsp?page=" + back;
+            } else if (!back.startsWith(req.getContextPath())) {
+                back = req.getContextPath() + back;
+            }
 
             if ("remove".equals(action)) {
                 ClienteOfertaGuardadaCRUD.removerOferta(idCliente, idPacote);
@@ -35,7 +48,7 @@ public class ClienteOfertaGuardadaServlet extends HttpServlet {
                 ClienteOfertaGuardadaCRUD.guardarOferta(idCliente, idPacote);
             }
 
-            resp.sendRedirect(req.getContextPath() + "/index.jsp?page=saved-offers");
+            resp.sendRedirect(back);
         } catch (Exception e) {
             String error = URLEncoder.encode(e.getMessage() != null ? e.getMessage() : "Erro técnico", StandardCharsets.UTF_8.toString());
             resp.sendRedirect(req.getContextPath() + "/index.jsp?page=saved-offers&error=" + error);

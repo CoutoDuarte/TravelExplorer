@@ -74,6 +74,10 @@ try {
         <jsp:param name="description" value="Consulta rapidamente as tuas reservas atuais e acompanha o respetivo estado." />
     </jsp:include>
 
+    <% if ("payment-done".equals(request.getParameter("success"))) { %>
+    <div class="surface-block"><p class="text-muted">Pagamento confirmado. A tua reserva foi atualizada.</p></div>
+    <% } %>
+
     <% if (technicalError != null) { %>
         <div class="surface-block">
             <p class="text-muted"><%= escapeHtml(technicalError) %></p>
@@ -96,16 +100,23 @@ try {
                 int displayTravelers = travelers > 0 ? travelers : 1;
                 String travelersText = displayTravelers + (displayTravelers == 1 ? " viajante" : " viajantes");
                 String status = hasText(reservation.getEstado()) ? reservation.getEstado() : "Estado por definir";
+                String statusParam = escapeHtml(status);
+                String titleParam = escapeHtml(title);
+                String referenceParam = "RES-" + reservation.getIdReserva();
+                String destinationParam = escapeHtml(destination);
+                String datesParam = escapeHtml(dates);
+                String travelersParam = escapeHtml(travelersText);
+                String detailsUrlParam = request.getContextPath() + "/index.jsp?page=reservation-details&idReserva=" + reservation.getIdReserva();
             %>
                 <jsp:include page="/components/customer/reservation_card.jsp">
-                    <jsp:param name="status" value='<%= escapeHtml(status) %>' />
-                    <jsp:param name="title" value='<%= escapeHtml(title) %>' />
-                    <jsp:param name="reference" value='<%= "RES-" + reservation.getIdReserva() %>' />
-                    <jsp:param name="destination" value='<%= escapeHtml(destination) %>' />
-                    <jsp:param name="dates" value='<%= escapeHtml(dates) %>' />
-                    <jsp:param name="travelers" value='<%= escapeHtml(travelersText) %>' />
-                    <jsp:param name="statusText" value='<%= escapeHtml(status) %>' />
-                    <jsp:param name="detailsUrl" value='<%= request.getContextPath() + "/index.jsp?page=reservation-details&idReserva=" + reservation.getIdReserva() %>' />
+                    <jsp:param name="status" value="<%= statusParam %>" />
+                    <jsp:param name="title" value="<%= titleParam %>" />
+                    <jsp:param name="reference" value="<%= referenceParam %>" />
+                    <jsp:param name="destination" value="<%= destinationParam %>" />
+                    <jsp:param name="dates" value="<%= datesParam %>" />
+                    <jsp:param name="travelers" value="<%= travelersParam %>" />
+                    <jsp:param name="statusText" value="<%= statusParam %>" />
+                    <jsp:param name="detailsUrl" value="<%= detailsUrlParam %>" />
                 </jsp:include>
             <% } %>
         </div>

@@ -217,7 +217,7 @@ String totalPaid = currencyFormat.format(totalPaidValue);
                                 <p class="text-muted"><strong>Destino:</strong> <%= escapeHtml(ofertaDestino) %></p>
                                 <p class="text-muted"><strong>Preço base:</strong> <%= escapeHtml(ofertaPreco) %></p>
                                 <div class="actions-row">
-                                    <a class="btn btn-secondary" href="<%= ctxPath %>/index.jsp?page=offer-details&id=<%= oferta.getIdPacote() %>">Ver oferta</a>
+                                    <a class="btn btn-secondary" href="<%= ctxPath %>/index.jsp?page=offer-details&amp;idPacote=<%= oferta.getIdPacote() %>">Ver oferta</a>
                                     <a class="btn btn-ghost" href="<%= ctxPath %>/index.jsp?page=saved-offers">Gerir ofertas</a>
                                 </div>
                             </div>

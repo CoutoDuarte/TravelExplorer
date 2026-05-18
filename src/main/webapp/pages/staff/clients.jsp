@@ -1,9 +1,13 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.text.NumberFormat,java.util.Locale,Connection.Classes.Cliente,Connection.Classes.Reserva,Connection.Classes.Pacote,Connection.Classes.Pagamento,Connection.CRUD.ClienteCRUD,Connection.CRUD.ReservaCRUD,Connection.CRUD.PacoteCRUD,Connection.CRUD.PagamentoCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.text.NumberFormat,java.util.Locale,java.time.format.DateTimeFormatter,Connection.Classes.Cliente,Connection.Classes.Reserva,Connection.Classes.Pacote,Connection.Classes.Pagamento,Connection.Classes.Viagens,Connection.Classes.Alojamento,Connection.Classes.Transporte,Connection.CRUD.ClienteCRUD,Connection.CRUD.ReservaCRUD,Connection.CRUD.PacoteCRUD,Connection.CRUD.PagamentoCRUD,Connection.CRUD.ViagemCRUD,Connection.CRUD.AlojamentoCRUD,Connection.CRUD.TransporteCRUD" %>
 <%
 ClienteCRUD clienteCRUD = new ClienteCRUD();
 ReservaCRUD reservaCRUD = new ReservaCRUD();
 PacoteCRUD pacoteCRUD = new PacoteCRUD();
 PagamentoCRUD pagamentoCRUD = new PagamentoCRUD();
+ViagemCRUD viagemCRUD = new ViagemCRUD();
+AlojamentoCRUD alojamentoCRUD = new AlojamentoCRUD();
+TransporteCRUD transporteCRUD = new TransporteCRUD();
+DateTimeFormatter dfRes = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(new Locale("pt", "PT"));
 List<Cliente> clientes = clienteCRUD.findAll();
 NumberFormat currencyFmt = NumberFormat.getCurrencyInstance(new Locale("pt", "PT"));
 String selCli = request.getParameter("selectedCliente");
@@ -38,7 +42,6 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
                         <th>Email</th>
                         <th>Telemóvel</th>
                         <th>NIF</th>
-                        <th>Última reserva</th>
                         <th>Total reservas</th>
                         <th></th>
                     </tr>
@@ -46,15 +49,12 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
                 <tbody>
                     <% for (Cliente c : clientes) {
                         int nRes = clienteCRUD.countReservasByCliente(c.getIdCliente());
-                        String ultNome = clienteCRUD.findLatestReservaNameByCliente(c.getIdCliente());
-                        String ultTxt = ultNome != null && !ultNome.isEmpty() ? ultNome : "—";
                     %>
                     <tr>
                         <td><strong><%= c.getNome() != null ? c.getNome() : "" %></strong></td>
                         <td><%= c.getEmail() != null ? c.getEmail() : "" %></td>
                         <td><%= c.getTelemovel() %></td>
                         <td><%= c.getNIF() > 0 ? String.valueOf(c.getNIF()) : "—" %></td>
-                        <td><%= ultTxt %></td>
                         <td><%= nRes %></td>
                         <td><a class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.85rem;" href="<%= clientsBase %>&amp;selectedCliente=<%= c.getIdCliente() %>">Ver ficha</a></td>
                     </tr>
@@ -80,22 +80,51 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
         <p><strong>NIF:</strong> <%= clienteSel.getNIF() > 0 ? String.valueOf(clienteSel.getNIF()) : "—" %></p>
         <p><strong>Morada:</strong> <%= clienteSel.getMorada() != null ? clienteSel.getMorada() : "—" %></p>
         <p><strong>Total de reservas:</strong> <%= clienteCRUD.countReservasByCliente(clienteSel.getIdCliente()) %></p>
-        <p><strong>Última reserva (pacote):</strong> <% String u = clienteCRUD.findLatestReservaNameByCliente(clienteSel.getIdCliente()); %><%= u != null && !u.isEmpty() ? u : "—" %></p>
         <%
         List<Reserva> reservasCliente = reservaCRUD.findByCliente(clienteSel.getIdCliente());
         if (reservasCliente != null && !reservasCliente.isEmpty()) {
         %>
         <div class="flow" style="margin-top: 1rem;">
-            <h3 style="font-size: 1rem;">Reservas</h3>
-            <ul class="public-info-card__list">
-                <% for (Reserva rc : reservasCliente) {
-                    Pacote pk = rc.getIdPacote() > 0 ? pacoteCRUD.findById(rc.getIdPacote()) : pacoteCRUD.findByReserva(rc.getIdReserva());
-                    String pkNome = pk != null && pk.getNome() != null ? pk.getNome() : "Reserva #" + rc.getIdReserva();
-                    List<Pagamento> pagos = pagamentoCRUD.findByReserva(rc.getIdReserva());
-                %>
-                <li><strong><%= pkNome %></strong> — <%= rc.getEstado() != null ? rc.getEstado() : "" %> · <%= currencyFmt.format(rc.getTotalPagar()) %><% if (!pagos.isEmpty()) { %> · <%= pagos.get(0).getMetodo() != null ? pagos.get(0).getMetodo() : "" %><% } %></li>
+            <h3 style="font-size: 1rem;">Reservas do cliente</h3>
+            <% for (Reserva rc : reservasCliente) {
+                Pacote pk = pacoteCRUD.findByReserva(rc.getIdReserva());
+                if (pk == null && rc.getIdPacote() > 0) pk = pacoteCRUD.findById(rc.getIdPacote());
+                String titulo = rc.getTitulo() != null && !rc.getTitulo().isEmpty() ? rc.getTitulo() : (pk != null && pk.getNome() != null ? pk.getNome() : "Reserva #" + rc.getIdReserva());
+                String rota = (rc.getOrigem() != null ? rc.getOrigem() : "—") + " → " + (rc.getDestino() != null ? rc.getDestino() : "—");
+                String datas = "";
+                if (rc.getDataPartida() != null) {
+                    datas = rc.getDataPartida().format(dfRes);
+                    if (rc.getDataRegresso() != null) datas += " - " + rc.getDataRegresso().format(dfRes);
+                }
+                Pagamento pag = pagamentoCRUD.findFirstByReserva(rc.getIdReserva());
+                String pagEstado = pag != null && pag.getEstado() != null ? pag.getEstado() : "Pendente";
+                List<Viagens> viagens = pk != null ? viagemCRUD.findByPacote(pk.getIdPacote()) : new java.util.ArrayList<Viagens>();
+                List<Alojamento> alojamentos = pk != null ? alojamentoCRUD.findByPacote(pk.getIdPacote()) : new java.util.ArrayList<Alojamento>();
+                List<Transporte> transportes = pk != null ? transporteCRUD.findByPacote(pk.getIdPacote()) : new java.util.ArrayList<Transporte>();
+            %>
+            <div class="surface-block" style="margin-top: 0.75rem;">
+                <p><strong>RES-<%= rc.getIdReserva() %> · <%= titulo %></strong></p>
+                <p class="text-muted"><strong>Rota:</strong> <%= rota %></p>
+                <% if (!datas.isEmpty()) { %><p class="text-muted"><strong>Datas:</strong> <%= datas %></p><% } %>
+                <p class="text-muted"><strong>Total:</strong> <%= currencyFmt.format(rc.getTotalPagar()) %> · <strong>Estado:</strong> <%= rc.getEstado() != null ? rc.getEstado() : "" %> · <strong>Pagamento:</strong> <%= pagEstado %></p>
+                <% if (!viagens.isEmpty()) { %>
+                <p class="text-muted"><strong>Voos:</strong>
+                <% for (int i = 0; i < viagens.size(); i++) {
+                    Viagens v = viagens.get(i);
+                    if (i > 0) { %>; <% }
+                %><%= v.getEmpresa() != null ? v.getEmpresa() : "" %> <%= v.getDescricao() != null ? v.getDescricao() : "" %> (<%= v.getOrigem() %>→<%= v.getDestino() %>)<% } %>
+                </p>
                 <% } %>
-            </ul>
+                <% if (!alojamentos.isEmpty()) { %>
+                <p class="text-muted"><strong>Alojamento:</strong> <%= alojamentos.get(0).getNome() %> · <%= alojamentos.get(0).getTipoEstadia() != null ? alojamentos.get(0).getTipoEstadia() : "Hotel" %></p>
+                <% } %>
+                <% if (!transportes.isEmpty()) {
+                    Transporte t = transportes.get(0);
+                %>
+                <p class="text-muted"><strong>Transporte:</strong> <%= t.getTipo() != null ? t.getTipo() : "" %> <%= t.getOrigem() != null ? t.getOrigem() : "" %> → <%= t.getDestino() != null ? t.getDestino() : "" %></p>
+                <% } %>
+            </div>
+            <% } %>
         </div>
         <% } %>
     </div>

@@ -1,5 +1,11 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="Connection.Security.StaffAuth" %>
+<%@ page import="Connection.Classes.Cliente" %>
+<%@ page import="Connection.Classes.Pagamento" %>
+<%@ page import="Connection.Classes.Reserva" %>
+<%@ page import="Connection.CRUD.ClienteCRUD" %>
+<%@ page import="Connection.CRUD.PagamentoCRUD" %>
+<%@ page import="Connection.CRUD.ReservaCRUD" %>
 <%
 String pageParam = request.getParameter("page");
 String contentPage = "/pages/public/home.jsp";
@@ -32,6 +38,12 @@ if ("offers".equals(pageParam)) {
     layoutPage = "/layouts/customer_layout.jsp";
 } else if ("reservation-details".equals(pageParam)) {
     contentPage = "/pages/customer/reservation_details.jsp";
+    layoutPage = "/layouts/customer_layout.jsp";
+} else if ("pay-reservation".equals(pageParam)) {
+    contentPage = "/pages/customer/pay_reservation.jsp";
+    layoutPage = "/layouts/customer_layout.jsp";
+} else if ("billing-details".equals(pageParam)) {
+    contentPage = "/pages/customer/billing_details.jsp";
     layoutPage = "/layouts/customer_layout.jsp";
 } else if ("staff-dashboard".equals(pageParam)) {
     contentPage = "/pages/staff/dashboard.jsp";
@@ -81,6 +93,41 @@ if (staffPermissionRequired != null) {
     if (!StaffAuth.hasPermission(request, staffPermissionRequired)) {
         response.sendRedirect(request.getContextPath() + "/index.jsp?page=staff-dashboard&error=no-permission");
         return;
+    }
+}
+
+if ("pay-reservation".equals(pageParam)) {
+    Object userIdObj = session.getAttribute("userId");
+    if (Boolean.TRUE.equals(session.getAttribute("auth")) && "cliente".equals(session.getAttribute("userType")) && userIdObj != null) {
+        String ctx = request.getContextPath();
+        try {
+            int idCliente = Integer.parseInt(userIdObj.toString());
+            int idReserva = Integer.parseInt(request.getParameter("idReserva"));
+            Reserva reserva = new ReservaCRUD().findByIdAndCliente(idReserva, idCliente);
+            if (reserva == null) {
+                response.sendRedirect(ctx + "/index.jsp?page=my-reservations&error=not-found");
+                return;
+            }
+            Cliente cliente = new ClienteCRUD().findById(idCliente);
+            if (cliente == null || !cliente.hasBillingComplete()) {
+                response.sendRedirect(ctx + "/index.jsp?page=billing-details&idReserva=" + idReserva + "&returnTo=pay");
+                return;
+            }
+            if (!cliente.isAtLeast18()) {
+                return;
+            }
+            Pagamento pagamento = new PagamentoCRUD().findFirstByReserva(idReserva);
+            if (pagamento == null) {
+                response.sendRedirect(ctx + "/index.jsp?page=reservation-details&idReserva=" + idReserva);
+                return;
+            }
+            String estadoPag = pagamento.getEstado();
+            if (estadoPag != null && "Pago".equalsIgnoreCase(estadoPag.trim())) {
+                response.sendRedirect(ctx + "/index.jsp?page=reservation-details&idReserva=" + idReserva);
+                return;
+            }
+        } catch (NumberFormatException ignored) {
+        }
     }
 }
 

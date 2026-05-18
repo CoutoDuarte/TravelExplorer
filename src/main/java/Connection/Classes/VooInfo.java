@@ -1,5 +1,8 @@
 package Connection.Classes;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class VooInfo {
     public String companhia;
     public String numeroVoo;
@@ -12,4 +15,6 @@ public class VooInfo {
     public String duracao;
     public double precoPorPessoa;
     public double precoTotal;
+    public int numEscalas;
+    public List<VooInfo> segmentos = new ArrayList<>();
 }

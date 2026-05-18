@@ -9,6 +9,7 @@ src/main/java/Connection/Classes/Transporte.java
 src/main/java/Connection/Classes/Viagens.java
 src/main/java/Connection/Classes/Permissao.java
 src/main/java/Connection/Classes/PesquisaRequest.java
+src/main/java/Connection/Classes/TransporteSugerido.java
 src/main/java/Connection/Classes/CriarSugestaoRequest.java
 src/main/java/Connection/Classes/FlightsSearchResult.java
 src/main/java/Connection/Classes/Reserva.java
@@ -36,13 +37,16 @@ src/main/java/Connection/Servlets/ViagemServlet.java
 src/main/java/Connection/Servlets/StaffCommunicationServlet.java
 src/main/java/Connection/Servlets/CriarSugestaoServlet.java
 src/main/java/Connection/Servlets/PacoteServlet.java
+src/main/java/Connection/Servlets/SuporteServlet.java
 src/main/java/Connection/Servlets/BookingJsonHelper.java
+src/main/java/Connection/Servlets/ClienteBillingServlet.java
 src/main/java/Connection/Servlets/PesquisaViagemServlet.java
 src/main/java/Connection/Servlets/ReservaServlet.java
 src/main/java/Connection/Servlets/ClienteServlet.java
 src/main/java/Connection/Servlets/StaffOffersServlet.java
 src/main/java/Connection/Servlets/StaffAdminServlet.java
 src/main/java/Connection/Servlets/StaffPromotionsServlet.java
+src/main/java/Connection/Servlets/PagarReservaServlet.java
 src/main/java/Connection/DBConnection.java
 src/main/java/Connection/CRUD/PermissaoCRUD.java
 src/main/java/Connection/CRUD/ClienteOfertaGuardadaCRUD.java

@@ -97,8 +97,11 @@ public class StaffOffersServlet extends HttpServlet {
             resp.sendRedirect(ctx + "/index.jsp?page=staff-offers&error=invalid-data");
             return;
         }
-        Pacote p = new Pacote(0, descricao, nome, preco, adultos, criancas, 0);
-        if (!pacoteCRUD.create(p)) {
+        String tipo = normalizeTipo(trim(req.getParameter("tipo")));
+        String imagemUrl = trim(req.getParameter("imagem_url"));
+        int id = pacoteCRUD.getNextId();
+        Pacote p = new Pacote(id, descricao, nome, preco, adultos, criancas, 0, tipo, imagemUrl.isEmpty() ? null : imagemUrl);
+        if (!pacoteCRUD.insert(p)) {
             resp.sendRedirect(ctx + "/index.jsp?page=staff-offers&error=invalid-data");
             return;
         }
@@ -128,7 +131,10 @@ public class StaffOffersServlet extends HttpServlet {
             resp.sendRedirect(ctx + "/index.jsp?page=staff-offers&error=invalid-data");
             return;
         }
-        Pacote updated = new Pacote(idPacote, descricao, nome, preco, adultos, criancas, existing.getIdReserva());
+        String tipo = normalizeTipo(trim(req.getParameter("tipo")));
+        String imagemUrl = trim(req.getParameter("imagem_url"));
+        Pacote updated = new Pacote(idPacote, descricao, nome, preco, adultos, criancas, existing.getIdReserva(), tipo,
+                imagemUrl.isEmpty() ? existing.getImagemUrl() : imagemUrl);
         if (!pacoteCRUD.update(updated)) {
             resp.sendRedirect(ctx + "/index.jsp?page=staff-offers&selectedPacote=" + idPacote + "&error=invalid-data");
             return;
@@ -189,5 +195,12 @@ public class StaffOffersServlet extends HttpServlet {
 
     private static String trim(String s) {
         return s == null ? "" : s.trim();
+    }
+
+    private static String normalizeTipo(String tipo) {
+        if ("Oferta".equalsIgnoreCase(tipo)) {
+            return "Oferta";
+        }
+        return "Pacote";
     }
 }

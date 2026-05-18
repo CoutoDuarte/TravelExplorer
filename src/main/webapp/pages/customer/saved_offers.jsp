@@ -172,7 +172,7 @@ if (technicalError == null && hasText(errorParam)) {
                                 <form action="${pageContext.request.contextPath}/ClienteOfertaGuardadaServlet" method="post">
                                     <input type="hidden" name="action" value="remove">
                                     <input type="hidden" name="idPacote" value="<%= offer.getIdPacote() %>">
-                                    <button class="btn btn-secondary" type="submit">Remover</button>
+                                    <button class="btn btn-secondary" type="submit">Remover dos guardados</button>
                                 </form>
                             </div>
                         </div>

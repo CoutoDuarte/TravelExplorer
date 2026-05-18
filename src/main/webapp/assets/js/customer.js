@@ -7,6 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeCustomerArea() {
   highlightCurrentCustomerSidebarLink();
   highlightCurrentCustomerNavbarLink();
+  initPaymentMethodCards();
+}
+
+function initPaymentMethodCards() {
+  const grid = document.getElementById('payment-method-grid');
+  if (!grid) return;
+  const sync = () => {
+    grid.querySelectorAll('.te-payment-method').forEach((card) => {
+      const input = card.querySelector('input[type="radio"]');
+      card.classList.toggle('is-selected', Boolean(input && input.checked));
+    });
+  };
+  grid.addEventListener('change', sync);
+  sync();
 }
 
 function highlightCurrentCustomerSidebarLink() {

@@ -2,6 +2,9 @@ package Connection.Classes;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+
 public class PesquisaRequest {
     public String origem;
     public String destino;
@@ -30,7 +33,45 @@ public class PesquisaRequest {
                 && notBlank(destino)
                 && notBlank(dataPartida)
                 && notBlank(dataRegresso)
-                && adultos > 0;
+                && adultos > 0
+                && validateDates() == null;
+    }
+
+    public String validateDates() {
+        if (!notBlank(dataPartida) || !notBlank(dataRegresso)) {
+            return null;
+        }
+        LocalDate partida;
+        LocalDate regresso;
+        try {
+            partida = LocalDate.parse(trimDate(dataPartida));
+            regresso = LocalDate.parse(trimDate(dataRegresso));
+        } catch (DateTimeParseException e) {
+            return "invalid";
+        }
+        LocalDate today = LocalDate.now();
+        if (partida.isBefore(today)) {
+            return "partida_passado";
+        }
+        if (regresso.isBefore(partida)) {
+            return "regresso_antes";
+        }
+        return null;
+    }
+
+    public static String messageForDateError(String code) {
+        if ("partida_passado".equals(code)) {
+            return "A data de partida não pode ser anterior à data de hoje.";
+        }
+        if ("regresso_antes".equals(code)) {
+            return "A data de regresso não pode ser anterior à data de partida.";
+        }
+        return "As datas introduzidas não são válidas.";
+    }
+
+    private static String trimDate(String iso) {
+        String v = iso.trim();
+        return v.length() >= 10 ? v.substring(0, 10) : v;
     }
 
     private static String firstParam(HttpServletRequest req, String primary, String alternate) {

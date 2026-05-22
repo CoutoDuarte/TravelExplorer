@@ -1,8 +1,22 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.time.format.DateTimeFormatter,Connection.Classes.Comunicacao,Connection.Classes.Cliente,Connection.CRUD.ComunicacaoCRUD,Connection.CRUD.ClienteCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.util.ArrayList,java.time.format.DateTimeFormatter,Connection.Classes.Comunicacao,Connection.Classes.Cliente,Connection.Classes.Reserva,Connection.Classes.Pacote,Connection.CRUD.ComunicacaoCRUD,Connection.CRUD.ClienteCRUD,Connection.CRUD.ReservaCRUD,Connection.CRUD.PacoteCRUD" %>
 <%
 ComunicacaoCRUD comunicacaoCRUD = new ComunicacaoCRUD();
 ClienteCRUD clienteCRUD = new ClienteCRUD();
+ReservaCRUD reservaCRUD = new ReservaCRUD();
+PacoteCRUD pacoteCRUD = new PacoteCRUD();
 List<Comunicacao> pedidos = comunicacaoCRUD.findSupportTickets();
+String reservaFilter = request.getParameter("reservaFilter");
+String clienteFilter = request.getParameter("clienteFilter");
+int filterReserva = 0;
+int filterCliente = 0;
+try { if (reservaFilter != null) filterReserva = Integer.parseInt(reservaFilter.trim()); } catch (NumberFormatException ignored) {}
+try { if (clienteFilter != null) filterCliente = Integer.parseInt(clienteFilter.trim()); } catch (NumberFormatException ignored) {}
+List<Comunicacao> visiveis = new ArrayList<>();
+for (Comunicacao co : pedidos) {
+    if (filterReserva > 0 && co.getIdReserva() != filterReserva) continue;
+    if (filterCliente > 0 && co.getIdCliente() != filterCliente) continue;
+    visiveis.add(co);
+}
 String selC = request.getParameter("selectedComunicacao");
 Comunicacao selCom = null;
 if (selC != null && !selC.trim().isEmpty()) {
@@ -11,6 +25,8 @@ if (selC != null && !selC.trim().isEmpty()) {
 String success = request.getParameter("success");
 String error = request.getParameter("error");
 String commBase = request.getContextPath() + "/index.jsp?page=staff-communication";
+String reservasBase = request.getContextPath() + "/index.jsp?page=staff-reservations";
+String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
 DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(java.util.Locale.forLanguageTag("pt-PT"));
 %>
 
@@ -26,12 +42,21 @@ DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(ja
     <jsp:include page="/components/shared/page_header.jsp">
         <jsp:param name="eyebrow" value="Apoio" />
         <jsp:param name="heading" value="Pedidos de apoio" />
-        <jsp:param name="description" value="Mensagens enviadas pelos clientes a partir das reservas." />
+        <jsp:param name="description" value="Mensagens dos clientes com ligação direta à reserva e ficha de cliente." />
     </jsp:include>
 
+    <% if (filterReserva > 0 || filterCliente > 0) { %>
+    <p class="text-muted">
+        Filtro ativo
+        <% if (filterReserva > 0) { %>· reserva #<%= filterReserva %><% } %>
+        <% if (filterCliente > 0) { %>· cliente #<%= filterCliente %><% } %>
+        · <a href="<%= commBase %>">Limpar filtro</a>
+    </p>
+    <% } %>
+
     <div class="surface-block surface-block-lg staff-action-panel">
-        <% if (pedidos.isEmpty()) { %>
-        <p class="text-muted">Ainda não existem pedidos de apoio.</p>
+        <% if (visiveis.isEmpty()) { %>
+        <p class="text-muted">Não existem pedidos de apoio para este filtro.</p>
         <% } else { %>
         <div class="staff-offers-table-wrap">
             <table class="staff-offers-table">
@@ -47,20 +72,32 @@ DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(ja
                     </tr>
                 </thead>
                 <tbody>
-                    <% for (Comunicacao co : pedidos) {
+                    <% for (Comunicacao co : visiveis) {
                         Cliente cl = co.getIdCliente() > 0 ? clienteCRUD.findById(co.getIdCliente()) : null;
+                        Reserva rv = co.getIdReserva() > 0 ? reservaCRUD.findById(co.getIdReserva()) : null;
+                        Pacote pk = rv != null && rv.getIdPacote() > 0 ? pacoteCRUD.findById(rv.getIdPacote()) : null;
+                        if (pk == null && rv != null) pk = pacoteCRUD.findByReserva(rv.getIdReserva());
                         String clNome = cl != null && cl.getNome() != null ? cl.getNome() : "—";
-                        String clEmail = cl != null && cl.getEmail() != null ? cl.getEmail() : "";
+                        String resTitulo = rv != null && rv.getTitulo() != null && !rv.getTitulo().isEmpty()
+                            ? rv.getTitulo() : (pk != null && pk.getNome() != null ? pk.getNome() : (co.getIdReserva() > 0 ? "Reserva #" + co.getIdReserva() : "—"));
                         String d = co.getDataComunicacao() != null ? co.getDataComunicacao().format(dfPt) : "—";
                     %>
                     <tr>
                         <td><%= co.getIdComunicacao() %></td>
                         <td><strong><%= co.getTitulo() != null ? co.getTitulo() : "" %></strong></td>
-                        <td><%= clNome %><% if (!clEmail.isEmpty()) { %><br><span class="text-muted" style="font-size:0.85rem;"><%= clEmail %></span><% } %></td>
-                        <td><%= co.getIdReserva() > 0 ? "#" + co.getIdReserva() : "—" %></td>
+                        <td><%= clNome %></td>
+                        <td><%= resTitulo %></td>
                         <td><%= d %></td>
                         <td><%= co.getEstado() != null ? co.getEstado() : "" %></td>
-                        <td><a class="btn btn-secondary" style="padding:0.35rem 0.65rem;font-size:0.85rem;" href="<%= commBase %>&amp;selectedComunicacao=<%= co.getIdComunicacao() %>">Responder</a></td>
+                        <td class="staff-row-actions">
+                            <a class="btn btn-secondary" style="padding:0.35rem 0.65rem;font-size:0.85rem;" href="<%= commBase %>&amp;selectedComunicacao=<%= co.getIdComunicacao() %><% if (filterReserva > 0) { %>&amp;reservaFilter=<%= filterReserva %><% } %><% if (filterCliente > 0) { %>&amp;clienteFilter=<%= filterCliente %><% } %>">Responder</a>
+                            <% if (co.getIdReserva() > 0) { %>
+                            <a class="btn btn-secondary" style="padding:0.35rem 0.65rem;font-size:0.85rem;" href="<%= reservasBase %>&amp;selectedReserva=<%= co.getIdReserva() %>">Ver reserva</a>
+                            <% } %>
+                            <% if (cl != null) { %>
+                            <a class="btn btn-secondary" style="padding:0.35rem 0.65rem;font-size:0.85rem;" href="<%= clientsBase %>&amp;selectedCliente=<%= cl.getIdCliente() %>">Ver cliente</a>
+                            <% } %>
+                        </td>
                     </tr>
                     <% } %>
                 </tbody>
@@ -70,7 +107,10 @@ DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(ja
     </div>
 </div>
 
-<% if (selCom != null) { %>
+<% if (selCom != null) {
+    Cliente clSel = selCom.getIdCliente() > 0 ? clienteCRUD.findById(selCom.getIdCliente()) : null;
+    Reserva rvSel = selCom.getIdReserva() > 0 ? reservaCRUD.findById(selCom.getIdReserva()) : null;
+%>
 <div id="staffCommBackdrop" class="staff-drawer-backdrop is-open" aria-hidden="false"></div>
 <div id="staffCommDrawer" class="staff-drawer is-open" aria-hidden="false">
     <div class="staff-drawer__header">
@@ -78,9 +118,18 @@ DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(ja
         <button type="button" class="staff-drawer__close" id="staffCommClose" aria-label="Fechar">&times;</button>
     </div>
     <div class="staff-drawer__body flow">
-        <% Cliente clSel = selCom.getIdCliente() > 0 ? clienteCRUD.findById(selCom.getIdCliente()) : null; %>
         <p><strong>Cliente:</strong> <%= clSel != null ? clSel.getNome() : "—" %> <% if (clSel != null && clSel.getEmail() != null) { %>(<%= clSel.getEmail() %>)<% } %></p>
-        <% if (selCom.getIdReserva() > 0) { %><p><strong>Reserva:</strong> #<%= selCom.getIdReserva() %></p><% } %>
+        <% if (selCom.getIdReserva() > 0) { %>
+        <p><strong>Reserva:</strong> #<%= selCom.getIdReserva() %><% if (rvSel != null && rvSel.getTitulo() != null) { %> — <%= rvSel.getTitulo() %><% } %></p>
+        <% } %>
+        <div class="actions-row">
+            <% if (selCom.getIdReserva() > 0) { %>
+            <a class="btn btn-secondary" href="<%= reservasBase %>&amp;selectedReserva=<%= selCom.getIdReserva() %>">Ver reserva</a>
+            <% } %>
+            <% if (clSel != null) { %>
+            <a class="btn btn-secondary" href="<%= clientsBase %>&amp;selectedCliente=<%= clSel.getIdCliente() %>">Ver cliente</a>
+            <% } %>
+        </div>
         <p><strong>Mensagem:</strong></p>
         <p class="text-muted"><%= selCom.getMensagem() != null ? selCom.getMensagem() : "" %></p>
         <% if (selCom.getResposta() != null && !selCom.getResposta().trim().isEmpty()) { %>
@@ -101,11 +150,34 @@ DateTimeFormatter dfPt = DateTimeFormatter.ofPattern("dd/MM/yyyy").withLocale(ja
 </div>
 <script>
 (function() {
-  var base = document.getElementById('staffCommRoot').getAttribute('data-comm-base') || '';
-  function closeAll() { window.location.href = base; }
-  document.getElementById('staffCommBackdrop')?.addEventListener('click', function(ev) { if (ev.target.id === 'staffCommBackdrop') closeAll(); });
-  document.getElementById('staffCommClose')?.addEventListener('click', closeAll);
-  document.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') closeAll(); });
+  function closePanel(ev) {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    var backdrop = document.getElementById('staffCommBackdrop');
+    var drawer = document.getElementById('staffCommDrawer');
+    if (backdrop) {
+      backdrop.classList.remove('is-open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      backdrop.hidden = true;
+    }
+    if (drawer) {
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('aria-hidden', 'true');
+      drawer.hidden = true;
+    }
+    var url = new URL(window.location.href);
+    url.searchParams.delete('selectedComunicacao');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }
+  document.getElementById('staffCommBackdrop')?.addEventListener('click', function(ev) {
+    if (ev.target.id === 'staffCommBackdrop') closePanel(ev);
+  });
+  document.getElementById('staffCommClose')?.addEventListener('click', closePanel);
+  document.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Escape') closePanel();
+  });
 })();
 </script>
 <% } %>

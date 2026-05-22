@@ -1,15 +1,16 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <nav class="public-navbar" aria-label="Navegação principal do cliente">
-    <div class="public-navbar__inner">
-        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard" aria-label="Ir para a área de cliente">
+    <div class="public-navbar__inner public-navbar__inner--balanced">
+        <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp" aria-label="Ir para a página inicial">
             <span class="public-navbar__brand-mark">TE</span>
             <span class="public-navbar__brand-text">TravelExplorer</span>
         </a>
 
+        <ul class="public-navbar__links public-navbar__links--center" role="list">
+            <li><a class="public-navbar__link customer-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a></li>
+        </ul>
+
         <div class="public-navbar__actions">
-            <a class="btn btn-ghost customer-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
-            <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
-            <a class="btn btn-ghost customer-navbar__link" data-customer-nav-page="customer-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=customer-dashboard">Área de cliente</a>
             <a class="btn btn-secondary customer-navbar__link" data-customer-nav-page="logout" href="${pageContext.request.contextPath}/index.jsp?page=logout">Terminar sessão</a>
         </div>
     </div>

@@ -1,15 +1,17 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <nav class="public-navbar" aria-label="Navegação principal da área staff">
-    <div class="public-navbar__inner">
+    <div class="public-navbar__inner public-navbar__inner--balanced">
         <a class="public-navbar__brand" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard" aria-label="Ir para a dashboard da área staff">
             <span class="public-navbar__brand-mark">TE</span>
             <span class="public-navbar__brand-text">TravelExplorer</span>
         </a>
 
+        <ul class="public-navbar__links public-navbar__links--center" role="list">
+            <li><a class="public-navbar__link staff-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a></li>
+            <li><a class="public-navbar__link staff-navbar__link" data-staff-nav-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Área staff</a></li>
+        </ul>
+
         <div class="public-navbar__actions">
-            <a class="btn btn-ghost staff-navbar__link" href="${pageContext.request.contextPath}/index.jsp">Início</a>
-            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="offers" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
-            <a class="btn btn-ghost staff-navbar__link" data-staff-nav-page="staff-dashboard" href="${pageContext.request.contextPath}/index.jsp?page=staff-dashboard">Área staff</a>
             <a class="btn btn-secondary staff-navbar__link" data-staff-nav-page="logout" href="${pageContext.request.contextPath}/index.jsp?page=logout">Terminar sessão</a>
         </div>
     </div>

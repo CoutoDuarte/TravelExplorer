@@ -4,6 +4,8 @@ import Connection.Classes.HotelSugestao;
 import Connection.Classes.SugestaoViagem;
 import Connection.Classes.VooInfo;
 
+import Connection.Security.StaffAuth;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
@@ -19,6 +21,10 @@ public final class BookingJsonHelper {
         return session != null
                 && Boolean.TRUE.equals(session.getAttribute("auth"))
                 && "cliente".equals(session.getAttribute("userType"));
+    }
+
+    public static boolean canUseTravelWizard(HttpServletRequest req) {
+        return isClienteLoggedIn(req) || StaffAuth.isStaffLoggedIn(req);
     }
 
     public static String nullSugestaoJson() {

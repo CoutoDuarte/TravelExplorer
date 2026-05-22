@@ -19,6 +19,8 @@ if (selCli != null && !selCli.trim().isEmpty()) {
     }
 }
 String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
+String reservasBase = request.getContextPath() + "/index.jsp?page=staff-reservations";
+String commBase = request.getContextPath() + "/index.jsp?page=staff-communication";
 %>
 
 <div id="staffClientsRoot" class="staff-shell staff-offers-page" data-clients-base="<%= clientsBase %>">
@@ -80,6 +82,9 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
         <p><strong>NIF:</strong> <%= clienteSel.getNIF() > 0 ? String.valueOf(clienteSel.getNIF()) : "—" %></p>
         <p><strong>Morada:</strong> <%= clienteSel.getMorada() != null ? clienteSel.getMorada() : "—" %></p>
         <p><strong>Total de reservas:</strong> <%= clienteCRUD.countReservasByCliente(clienteSel.getIdCliente()) %></p>
+        <div class="actions-row">
+            <a class="btn btn-secondary" href="<%= commBase %>&amp;clienteFilter=<%= clienteSel.getIdCliente() %>">Comunicação</a>
+        </div>
         <%
         List<Reserva> reservasCliente = reservaCRUD.findByCliente(clienteSel.getIdCliente());
         if (reservasCliente != null && !reservasCliente.isEmpty()) {
@@ -123,6 +128,10 @@ String clientsBase = request.getContextPath() + "/index.jsp?page=staff-clients";
                 %>
                 <p class="text-muted"><strong>Transporte:</strong> <%= t.getTipo() != null ? t.getTipo() : "" %> <%= t.getOrigem() != null ? t.getOrigem() : "" %> → <%= t.getDestino() != null ? t.getDestino() : "" %></p>
                 <% } %>
+                <div class="actions-row" style="margin-top:0.5rem;">
+                    <a class="btn btn-secondary" style="font-size:0.85rem;padding:0.35rem 0.65rem;" href="<%= reservasBase %>&amp;selectedReserva=<%= rc.getIdReserva() %>">Ver reserva</a>
+                    <a class="btn btn-secondary" style="font-size:0.85rem;padding:0.35rem 0.65rem;" href="<%= commBase %>&amp;reservaFilter=<%= rc.getIdReserva() %>">Comunicação</a>
+                </div>
             </div>
             <% } %>
         </div>

@@ -1,4 +1,4 @@
-<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.util.ArrayList,Connection.Classes.Promocao,Connection.Classes.Pacote,Connection.CRUD.PromocaoCRUD,Connection.CRUD.PacoteCRUD" %>
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" import="java.util.List,java.util.ArrayList,java.util.Map,Connection.Classes.Promocao,Connection.Classes.Pacote,Connection.Classes.Viagens,Connection.CRUD.PromocaoCRUD,Connection.CRUD.PacoteCRUD,Connection.CRUD.ViagemCRUD" %>
 <%!
 String jspParamSafe(String value) {
     if (value == null) {
@@ -26,10 +26,23 @@ java.text.DecimalFormatSymbols symH = new java.text.DecimalFormatSymbols(java.ut
 symH.setDecimalSeparator(',');
 symH.setGroupingSeparator(' ');
 java.text.DecimalFormat dfHome = new java.text.DecimalFormat("#,##0.00", symH);
+ViagemCRUD viagemCRUDHome = new ViagemCRUD();
+Map<Integer, Promocao> promoPorPacote = Connection.PacotePublicHelper.mapActivePromosByPacote(promocoesAtivas);
+PacoteCRUD pacoteCRUDHome = new PacoteCRUD();
 
 java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy", java.util.Locale.forLanguageTag("pt-PT"));
 %>
 <div class="public-page">
+    <% if ("offerSaved".equals(request.getParameter("offerSaved"))) { %>
+    <div class="container" style="padding-top: 1rem;">
+        <div class="public-search-alert public-search-alert--success" role="status">Oferta guardada com sucesso.</div>
+    </div>
+    <% } %>
+    <% if ("offerSaveError".equals(request.getParameter("offerSaveError"))) { %>
+    <div class="container" style="padding-top: 1rem;">
+        <div class="public-search-alert" role="alert">Não foi possível guardar a oferta. Tenta novamente.</div>
+    </div>
+    <% } %>
     <section class="public-page__section public-page__section--hero hero-studio" id="hero-studio">
         <div class="container hero-studio__container">
             <div class="hero-studio__top">
@@ -43,7 +56,7 @@ java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeForma
                         pensada para viajar com calma e estilo.
                     </p>
                     <div class="public-hero__actions">
-                        <a class="btn btn-primary" href="<%= homeCtx %>/index.jsp?page=destinations">Ver destinos</a>
+                        <a class="btn btn-primary" href="<%= homeCtx %>/index.jsp#hero-studio">Planear viagem</a>
                         <% if (homeCliente) { %>
                         <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=customer-dashboard">Área de cliente</a>
                         <% } else if (homeStaff) { %>
@@ -79,31 +92,46 @@ java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeForma
             <% } else { %>
             <div class="cards-grid public-cards-grid home-promos__grid">
                 <% for (Promocao promo : promocoesAtivas) {
-                    String titulo = promo.getTitulo() != null ? promo.getTitulo() : "Promoção";
-                    String destino = promo.getDestino() != null ? promo.getDestino() : "";
-                    String condicao = promo.getCondicao() != null ? promo.getCondicao() : "";
-                    String periodo = "";
-                    if (promo.getPeriodoInicio() != null && promo.getPeriodoFim() != null) {
-                        periodo = promo.getPeriodoInicio().format(promoDateFmt) + " – " + promo.getPeriodoFim().format(promoDateFmt);
-                    } else if (promo.getPeriodoInicio() != null) {
-                        periodo = "Desde " + promo.getPeriodoInicio().format(promoDateFmt);
-                    }
-                    String desc = condicao;
-                    if (!periodo.isEmpty()) {
-                        desc = periodo + (condicao.isEmpty() ? "" : " · " + condicao);
-                    }
-                    if (desc.length() > 160) desc = desc.substring(0, 160) + "…";
-                    int seed = (promo.getIdPromocao() % 6) + 1;
-                    String titleParam = jspParamSafe(titulo);
-                    String textParam = jspParamSafe(desc.isEmpty() ? destino : desc);
-                    String destParam = jspParamSafe(destino.isEmpty() ? "—" : destino);
-                    String cardTextParam = textParam.isEmpty() ? destParam : textParam;
-                    String gradientSeedParam = String.valueOf(seed);
+                    if (promo.getIdPacote() <= 0) continue;
+                    Pacote opPromo = pacoteCRUDHome.findById(promo.getIdPacote());
+                    if (opPromo == null || !Connection.PacotePublicHelper.isPubliclyVisible(opPromo)) continue;
+                    List<Viagens> vListPromo = viagemCRUDHome.findByPacote(opPromo.getIdPacote());
+                    String tituloPromo = opPromo.getNome() != null ? opPromo.getNome() : (promo.getTitulo() != null ? promo.getTitulo() : "Oferta");
+                    String routeLinePromo = Connection.PacotePublicHelper.routeFromViagens(vListPromo);
+                    String datesLinePromo = Connection.PacotePublicHelper.datesFromViagens(vListPromo);
+                    String metaLinePromo = Connection.PacotePublicHelper.passengersLabel(opPromo);
+                    Connection.PacotePublicHelper.PromoPrice ppPromo = Connection.PacotePublicHelper.priceForPacote(opPromo, promo);
+                    String precoPromo = Connection.PacotePublicHelper.formatPrecoCard(ppPromo, dfHome);
+                    String precoOrigPromo = Connection.PacotePublicHelper.formatPrecoOriginalRiscado(ppPromo, dfHome);
+                    String badgePromo = Connection.PacotePublicHelper.promoBadge(ppPromo);
+                    String imgSrcPromo = Connection.PacotePublicHelper.resolveImageSrc(opPromo, homeCtx);
+                    String safeImagemPromo = jspParamSafe(imgSrcPromo != null ? imgSrcPromo : "");
+                    String gradientOnlyPromo = imgSrcPromo == null ? "true" : "false";
+                    String safeTituloPromo = jspParamSafe(tituloPromo);
+                    String safeRoutePromo = jspParamSafe(routeLinePromo);
+                    String safeMetaPromo = jspParamSafe(metaLinePromo);
+                    String safeDatesPromo = jspParamSafe(datesLinePromo);
+                    String safePrecoPromo = jspParamSafe(precoPromo);
+                    String safePrecoOrigPromo = jspParamSafe(precoOrigPromo);
+                    String safeBadgePromo = jspParamSafe(badgePromo);
+                    String safeSeedPromo = String.valueOf(Connection.PacotePublicHelper.gradientSeed(opPromo.getIdPacote()));
+                    String safeIdPromo = String.valueOf(opPromo.getIdPacote());
                 %>
-                <jsp:include page="/components/public/public_category_card.jsp">
-                    <jsp:param name="gradientSeed" value="<%= gradientSeedParam %>" />
-                    <jsp:param name="title" value="<%= titleParam %>" />
-                    <jsp:param name="text" value="<%= cardTextParam %>" />
+                <jsp:include page="/components/public/public_offer_card.jsp">
+                    <jsp:param name="imagemUrl" value="<%= safeImagemPromo %>" />
+                    <jsp:param name="gradientOnly" value="<%= gradientOnlyPromo %>" />
+                    <jsp:param name="alt" value="<%= safeTituloPromo %>" />
+                    <jsp:param name="tag1" value="Promoção" />
+                    <jsp:param name="title" value="<%= safeTituloPromo %>" />
+                    <jsp:param name="routeLine" value="<%= safeRoutePromo %>" />
+                    <jsp:param name="metaLine" value="<%= safeMetaPromo %>" />
+                    <jsp:param name="datesLine" value="<%= safeDatesPromo %>" />
+                    <jsp:param name="price" value="<%= safePrecoPromo %>" />
+                    <jsp:param name="priceOriginal" value="<%= safePrecoOrigPromo %>" />
+                    <jsp:param name="promoBadge" value="<%= safeBadgePromo %>" />
+                    <jsp:param name="idPacote" value="<%= safeIdPromo %>" />
+                    <jsp:param name="gradientSeed" value="<%= safeSeedPromo %>" />
+                    <jsp:param name="redirectPage" value="home" />
                 </jsp:include>
                 <% } %>
             </div>
@@ -124,47 +152,49 @@ java.time.format.DateTimeFormatter promoDateFmt = java.time.format.DateTimeForma
             <% } else { %>
             <div class="cards-grid public-cards-grid">
                 <% for (Pacote op : ofertasHome) {
-                    String img = op.getImagemUrl() != null ? op.getImagemUrl().trim() : "";
+                    if (!Connection.PacotePublicHelper.isPubliclyVisible(op)) continue;
+                    List<Viagens> vList = viagemCRUDHome.findByPacote(op.getIdPacote());
                     String titulo = op.getNome() != null ? op.getNome() : "Oferta";
-                    String desc = op.getDescricao() != null ? op.getDescricao() : "";
-                    if (desc.length() > 120) desc = desc.substring(0, 120) + "…";
-                    String preco = "Desde " + dfHome.format(op.getPrecoBase()) + " €";
-                    String tag2Txt = op.getNumAdultos() + " adultos";
-                    if (op.getNumCriancas() > 0) {
-                        tag2Txt = tag2Txt + ", " + op.getNumCriancas() + " crianças";
-                    }
-                    String extraTxt = "Ref. " + op.getIdPacote();
+                    String routeLine = Connection.PacotePublicHelper.routeFromViagens(vList);
+                    String datesLine = Connection.PacotePublicHelper.datesFromViagens(vList);
+                    String metaLine = Connection.PacotePublicHelper.passengersLabel(op);
+                    Promocao promoOferta = promoPorPacote.get(op.getIdPacote());
+                    Connection.PacotePublicHelper.PromoPrice ppOferta = Connection.PacotePublicHelper.priceForPacote(op, promoOferta);
+                    String preco = Connection.PacotePublicHelper.formatPrecoCard(ppOferta, dfHome);
+                    String precoOrig = Connection.PacotePublicHelper.formatPrecoOriginalRiscado(ppOferta, dfHome);
+                    String badge = Connection.PacotePublicHelper.promoBadge(ppOferta);
                     String showSaveParam = homeCliente ? "true" : (homeLoggedIn ? "" : "guest");
-                    String imagemUrlParam = jspParamSafe(img);
-                    String altParam = jspParamSafe(titulo);
-                    String tag2Param = jspParamSafe(tag2Txt);
-                    String titleParam = jspParamSafe(titulo);
-                    String extraParam = jspParamSafe(extraTxt);
-                    String descParam = jspParamSafe(desc);
-                    String priceParam = jspParamSafe(preco);
-                    String idPacoteParam = String.valueOf(op.getIdPacote());
-                    String gradientSeedParam = String.valueOf((op.getIdPacote() % 3) + 1);
+                    String imgSrc = Connection.PacotePublicHelper.resolveImageSrc(op, homeCtx);
+                    String safeImagem = jspParamSafe(imgSrc != null ? imgSrc : "");
+                    String gradientOnly = imgSrc == null ? "true" : "false";
+                    String safeTitulo = jspParamSafe(titulo);
+                    String safeRoute = jspParamSafe(routeLine);
+                    String safeMeta = jspParamSafe(metaLine);
+                    String safeDates = jspParamSafe(datesLine);
+                    String safePreco = jspParamSafe(preco);
+                    String safePrecoOrig = jspParamSafe(precoOrig);
+                    String safeBadge = jspParamSafe(badge);
+                    String safeSeed = String.valueOf(Connection.PacotePublicHelper.gradientSeed(op.getIdPacote()));
+                    String safeIdPacote = String.valueOf(op.getIdPacote());
                 %>
                 <jsp:include page="/components/public/public_offer_card.jsp">
-                    <jsp:param name="imagemUrl" value="<%= imagemUrlParam %>" />
-                    <jsp:param name="alt" value="<%= altParam %>" />
+                    <jsp:param name="imagemUrl" value="<%= safeImagem %>" />
+                    <jsp:param name="gradientOnly" value="<%= gradientOnly %>" />
+                    <jsp:param name="alt" value="<%= safeTitulo %>" />
                     <jsp:param name="tag1" value="Oferta" />
-                    <jsp:param name="tag2" value="<%= tag2Param %>" />
-                    <jsp:param name="title" value="<%= titleParam %>" />
-                    <jsp:param name="origin" value="—" />
-                    <jsp:param name="destination" value="—" />
-                    <jsp:param name="extra" value="<%= extraParam %>" />
-                    <jsp:param name="description" value="<%= descParam %>" />
-                    <jsp:param name="price" value="<%= priceParam %>" />
-                    <jsp:param name="idPacote" value="<%= idPacoteParam %>" />
-                    <jsp:param name="gradientSeed" value="<%= gradientSeedParam %>" />
+                    <jsp:param name="title" value="<%= safeTitulo %>" />
+                    <jsp:param name="routeLine" value="<%= safeRoute %>" />
+                    <jsp:param name="metaLine" value="<%= safeMeta %>" />
+                    <jsp:param name="datesLine" value="<%= safeDates %>" />
+                    <jsp:param name="price" value="<%= safePreco %>" />
+                    <jsp:param name="priceOriginal" value="<%= safePrecoOrig %>" />
+                    <jsp:param name="promoBadge" value="<%= safeBadge %>" />
+                    <jsp:param name="idPacote" value="<%= safeIdPacote %>" />
+                    <jsp:param name="gradientSeed" value="<%= safeSeed %>" />
                     <jsp:param name="showSave" value="<%= showSaveParam %>" />
                     <jsp:param name="redirectPage" value="home" />
                 </jsp:include>
                 <% } %>
-            </div>
-            <div class="actions-row" style="margin-top: 1rem;">
-                <a class="btn btn-secondary" href="<%= homeCtx %>/index.jsp?page=destinations">Ver todos os destinos</a>
             </div>
             <% } %>
         </div>

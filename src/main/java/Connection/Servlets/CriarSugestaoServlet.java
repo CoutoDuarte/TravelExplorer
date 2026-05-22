@@ -33,7 +33,7 @@ public class CriarSugestaoServlet extends HttpServlet {
 
         boolean debug = "1".equals(req.getParameter("debug"));
 
-        if (!BookingJsonHelper.isClienteLoggedIn(req)) {
+        if (!BookingJsonHelper.canUseTravelWizard(req)) {
             out.print("{\"ok\":false,\"authRequired\":true,\"message\":\""
                     + JsonUtil.escape(ERRO_AUTH) + "\"}");
             return;

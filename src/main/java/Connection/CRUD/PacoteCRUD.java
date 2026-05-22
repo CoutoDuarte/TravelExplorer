@@ -116,10 +116,18 @@ public class PacoteCRUD {
     private List<Pacote> findPublicFallback(String tipo, int limit) {
         List<Pacote> all = findRecent(limit > 0 ? limit : 50);
         List<Pacote> filtered = new ArrayList<>();
+        String tipoNorm = tipo != null ? tipo.trim() : "";
         for (Pacote p : all) {
-            if (p.getIdReserva() <= 0) {
-                filtered.add(p);
+            if (p.getIdReserva() > 0) {
+                continue;
             }
+            if (!tipoNorm.isEmpty() && p.getTipo() != null && !tipoNorm.equalsIgnoreCase(p.getTipo().trim())) {
+                continue;
+            }
+            if ("Reserva".equalsIgnoreCase(p.getTipo())) {
+                continue;
+            }
+            filtered.add(p);
         }
         return filtered;
     }
@@ -162,6 +170,27 @@ public class PacoteCRUD {
         return pacotes;
     }
 
+    public List<Pacote> findByTipo(String tipo) {
+        List<Pacote> pacotes = new ArrayList<>();
+        if (tipo == null || tipo.isBlank()) {
+            return pacotes;
+        }
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva, tipo, imagem_url "
+                + "FROM PACOTE WHERE tipo = ? ORDER BY idPacote DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, tipo.trim());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    pacotes.add(map(rs));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return pacotes;
+    }
+
     public List<Pacote> findAll() {
         List<Pacote> pacotes = new ArrayList<>();
         String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva, tipo, imagem_url "
@@ -183,7 +212,7 @@ public class PacoteCRUD {
     }
 
     public Pacote findById(int id) {
-        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva "
+        String sql = "SELECT idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva, tipo, imagem_url "
                    + "FROM PACOTE WHERE idPacote = ?";
 
         try (Connection conn = DBConnection.getConnection();

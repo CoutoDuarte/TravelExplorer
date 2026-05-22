@@ -3,6 +3,7 @@ package Connection.Servlets;
 import Connection.Classes.FlightsSearchResult;
 import Connection.Classes.PesquisaRequest;
 import Connection.Classes.VooInfo;
+import Connection.Security.StaffAuth;
 import ExternalAPI.ApiConfig;
 import ExternalAPI.FlightsClient;
 import ExternalAPI.FlightsClient.FlightsApiException;
@@ -20,7 +21,7 @@ import java.util.List;
 public class PesquisaViagemServlet extends HttpServlet {
 
     private static final String ERRO_GERAL = "Não foi possível concluir a pesquisa neste momento.";
-    private static final String ERRO_AUTH = "Para pesquisar e guardar viagens, precisa de iniciar sessão como cliente.";
+    private static final String ERRO_AUTH = "Para pesquisar viagens, precisa de iniciar sessão como cliente ou colaborador.";
 
     private final FlightsClient flights = new FlightsClient();
 
@@ -44,7 +45,7 @@ public class PesquisaViagemServlet extends HttpServlet {
         String debugMessage = "";
         int flightsCount = 0;
 
-        if (!BookingJsonHelper.isClienteLoggedIn(req)) {
+        if (!BookingJsonHelper.isClienteLoggedIn(req) && !StaffAuth.isStaffLoggedIn(req)) {
             out.print(authRequiredJson());
             return;
         }
@@ -52,11 +53,19 @@ public class PesquisaViagemServlet extends HttpServlet {
         PesquisaRequest pesquisa = PesquisaRequest.from(req);
 
         debugStep = "validate-params";
+        String dateError = pesquisa.validateDates();
+        if (dateError != null) {
+            if (debug) {
+                debugMessage = PesquisaRequest.messageForDateError(dateError);
+            }
+            out.print(errorJson(PesquisaRequest.messageForDateError(dateError), debug, debugStep, debugMessage, flightsCount));
+            return;
+        }
         if (!pesquisa.isValid()) {
             if (debug) {
                 debugMessage = "Parâmetros obrigatórios em falta ou inválidos";
             }
-            out.print(errorJson(debug, debugStep, debugMessage, flightsCount));
+            out.print(errorJson(ERRO_GERAL, debug, debugStep, debugMessage, flightsCount));
             return;
         }
 
@@ -69,7 +78,7 @@ public class PesquisaViagemServlet extends HttpServlet {
             if (debug) {
                 debugMessage = e.getDebugMessage();
             }
-            out.print(errorJson(debug, debugStep, debugMessage, flightsCount));
+            out.print(errorJson(ERRO_GERAL, debug, debugStep, debugMessage, flightsCount));
             return;
         }
 
@@ -120,10 +129,10 @@ public class PesquisaViagemServlet extends HttpServlet {
         return json.toString();
     }
 
-    private String errorJson(boolean debug, String debugStep, String debugMessage, int flightsCount) {
+    private String errorJson(String message, boolean debug, String debugStep, String debugMessage, int flightsCount) {
         StringBuilder json = new StringBuilder();
         json.append("{\"ok\":false");
-        json.append(",\"message\":\"").append(JsonUtil.escape(ERRO_GERAL)).append("\"");
+        json.append(",\"message\":\"").append(JsonUtil.escape(message != null ? message : ERRO_GERAL)).append("\"");
         if (debug) {
             appendDebugFields(json, debugStep, debugMessage, flightsCount);
         }

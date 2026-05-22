@@ -3,7 +3,10 @@ package Connection.Servlets;
 import java.io.IOException;
 import java.time.LocalDate;
 
+import Connection.CRUD.PacoteCRUD;
 import Connection.CRUD.PromocaoCRUD;
+import Connection.Classes.Pacote;
+import Connection.PacotePublicHelper;
 import Connection.Classes.Promocao;
 import Connection.Security.StaffAuth;
 
@@ -16,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class StaffPromotionsServlet extends HttpServlet {
 
     private final PromocaoCRUD promocaoCRUD = new PromocaoCRUD();
+    private final PacoteCRUD pacoteCRUD = new PacoteCRUD();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -35,7 +39,7 @@ public class StaffPromotionsServlet extends HttpServlet {
         }
         String action = req.getParameter("action");
         if (action == null || action.isEmpty()) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data");
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-action");
             return;
         }
         try {
@@ -50,28 +54,61 @@ public class StaffPromotionsServlet extends HttpServlet {
                     handleDelete(req, resp, ctx);
                     break;
                 default:
-                    resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data");
+                    resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-action");
             }
         } catch (Exception e) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data");
+            e.printStackTrace();
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=save-failed&openCreate=1");
         }
     }
 
     private void handleCreate(HttpServletRequest req, HttpServletResponse resp, String ctx) throws IOException {
-        String titulo = trim(req.getParameter("titulo"));
-        String destino = trim(req.getParameter("destino"));
-        String condicao = trim(req.getParameter("condicao"));
-        String estado = trim(req.getParameter("estado"));
-        LocalDate pi = parseDate(req.getParameter("periodo_inicio"));
-        LocalDate pf = parseDate(req.getParameter("periodo_fim"));
         int idPacote = parseIntOrZero(req.getParameter("idPacote"));
-        if (titulo.isEmpty() || destino.isEmpty() || estado.isEmpty()) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data&openCreate=1");
+        if (idPacote <= 0) {
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=missing-pacote&openCreate=1");
             return;
         }
-        Promocao p = new Promocao(0, titulo, destino, pi, pf, condicao != null ? condicao : "", estado, idPacote);
+        Pacote pacote = pacoteCRUD.findById(idPacote);
+        if (pacote == null || !PacotePublicHelper.isPubliclyVisible(pacote)) {
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-pacote&openCreate=1");
+            return;
+        }
+        LocalDate pi = parseDate(req.getParameter("periodo_inicio"));
+        LocalDate pf = parseDate(req.getParameter("periodo_fim"));
+        if (pi == null || pf == null) {
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=missing-dates&openCreate=1");
+            return;
+        }
+        if (pf.isBefore(pi)) {
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-dates&openCreate=1");
+            return;
+        }
+        double desconto = parseDoubleOrZero(req.getParameter("desconto_percent"));
+        if (desconto <= 0 || desconto >= 100) {
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-discount&openCreate=1");
+            return;
+        }
+        String titulo = trim(req.getParameter("titulo"));
+        String destino = trim(req.getParameter("destino"));
+        String estado = trim(req.getParameter("estado"));
+        if (titulo.isEmpty()) {
+            titulo = "Promoção — " + (pacote.getNome() != null ? pacote.getNome().trim() : "Oferta");
+        }
+        if (destino.isEmpty()) {
+            destino = pacote.getNome() != null && !pacote.getNome().isBlank()
+                    ? pacote.getNome().trim()
+                    : "Oferta TravelExplorer";
+        }
+        if (estado.isEmpty()) {
+            estado = "Ativa";
+        }
+        String condicao = trim(req.getParameter("condicao"));
+        if (condicao.isEmpty()) {
+            condicao = "Desconto de " + (int) Math.round(desconto) + "% sobre o preço base do pacote.";
+        }
+        Promocao p = new Promocao(0, titulo, destino, pi, pf, condicao, estado, idPacote);
         if (!promocaoCRUD.create(p)) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data&openCreate=1");
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=save-failed&openCreate=1");
             return;
         }
         resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&success=promotion-created");
@@ -87,16 +124,16 @@ public class StaffPromotionsServlet extends HttpServlet {
         LocalDate pf = parseDate(req.getParameter("periodo_fim"));
         int idPacote = parseIntOrZero(req.getParameter("idPacote"));
         if (titulo.isEmpty() || destino.isEmpty() || estado.isEmpty()) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&selectedPromocao=" + id + "&error=invalid-data");
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&selectedPromocao=" + id + "&error=missing-fields");
             return;
         }
         if (promocaoCRUD.findById(id) == null) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=invalid-data");
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&error=not-found");
             return;
         }
         Promocao p = new Promocao(id, titulo, destino, pi, pf, condicao != null ? condicao : "", estado, idPacote);
         if (!promocaoCRUD.update(p)) {
-            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&selectedPromocao=" + id + "&error=invalid-data");
+            resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&selectedPromocao=" + id + "&error=save-failed");
             return;
         }
         resp.sendRedirect(ctx + "/index.jsp?page=staff-promotions&success=promotion-updated");
@@ -126,5 +163,13 @@ public class StaffPromotionsServlet extends HttpServlet {
             return 0;
         }
         return Integer.parseInt(t);
+    }
+
+    private static double parseDoubleOrZero(String s) {
+        String t = trim(s);
+        if (t.isEmpty()) {
+            return 0;
+        }
+        return Double.parseDouble(t.replace(',', '.'));
     }
 }

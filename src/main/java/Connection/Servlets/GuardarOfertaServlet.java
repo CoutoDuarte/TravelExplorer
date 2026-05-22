@@ -9,21 +9,20 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.SQLException;
 import java.util.stream.Collectors;
 
-@WebServlet("/guardar-viagem")
-public class GuardarViagemServlet extends HttpServlet {
+@WebServlet("/guardar-oferta")
+public class GuardarOfertaServlet extends HttpServlet {
 
-    private static final String ERRO_AUTH = "Precisas de iniciar sessão como cliente para guardar a viagem.";
-    private static final String ERRO_STAFF = "Apenas clientes podem criar reservas.";
-    private static final String ERRO_GERAL = "Não foi possível guardar a viagem.";
-    private static final String ERRO_PEDIDO = "Dados incompletos para guardar a viagem.";
-    private static final String SUCESSO = "A tua reserva foi guardada com sucesso.";
+    private static final String ERRO_AUTH = "Precisas de iniciar sessão como colaborador.";
+    private static final String ERRO_PERMISSAO = "Não tens permissão para criar ofertas.";
+    private static final String ERRO_GERAL = "Não foi possível guardar a oferta.";
+    private static final String ERRO_PEDIDO = "Dados incompletos para guardar a oferta.";
+    private static final String SUCESSO = "Oferta publicada com sucesso.";
 
     private final GuardarViagemCRUD guardarCRUD = new GuardarViagemCRUD();
 
@@ -33,20 +32,12 @@ public class GuardarViagemServlet extends HttpServlet {
         resp.setContentType("application/json;charset=UTF-8");
         PrintWriter out = resp.getWriter();
 
-        if (StaffAuth.isStaffLoggedIn(req)) {
-            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            out.print("{\"ok\":false,\"message\":\"" + JsonUtil.escape(ERRO_STAFF) + "\"}");
-            return;
-        }
-
-        if (!BookingJsonHelper.isClienteLoggedIn(req)) {
+        if (!StaffAuth.isStaffLoggedIn(req)) {
             out.print("{\"ok\":false,\"authRequired\":true,\"message\":\"" + JsonUtil.escape(ERRO_AUTH) + "\"}");
             return;
         }
-
-        Integer idCliente = getClienteId(req);
-        if (idCliente == null) {
-            out.print("{\"ok\":false,\"authRequired\":true,\"message\":\"" + JsonUtil.escape(ERRO_AUTH) + "\"}");
+        if (!StaffAuth.hasPermission(req, "STAFF_OFFERS")) {
+            out.print("{\"ok\":false,\"permissionDenied\":true,\"message\":\"" + JsonUtil.escape(ERRO_PERMISSAO) + "\"}");
             return;
         }
 
@@ -54,30 +45,44 @@ public class GuardarViagemServlet extends HttpServlet {
         try {
             body = req.getReader().lines().collect(Collectors.joining());
         } catch (Exception e) {
-            e.printStackTrace();
             out.print(errorJson(ERRO_PEDIDO));
             return;
         }
 
         CriarSugestaoRequest pedido = CriarSugestaoRequest.fromJson(body);
-        SugestaoViagem sugestao = parseSugestao(body);
+        SugestaoViagem sugestao = ensureSugestao(pedido, parseSugestao(body));
 
-        if (!pedido.isValid() || pedido.vooRegressoSelecionado == null || sugestao == null) {
+        if (!pedido.isValid() || pedido.vooRegressoSelecionado == null) {
             out.print(errorJson(ERRO_PEDIDO));
             return;
         }
 
         try {
-            int idReserva = guardarCRUD.guardar(idCliente, pedido, sugestao);
-            out.print("{\"ok\":true,\"idReserva\":" + idReserva + ",\"message\":\"" + JsonUtil.escape(SUCESSO) + "\"}");
+            int idPacote = guardarCRUD.guardarOferta(pedido, sugestao);
+            out.print("{\"ok\":true,\"idPacote\":" + idPacote + ",\"message\":\"" + JsonUtil.escape(SUCESSO) + "\"}");
         } catch (SQLException e) {
             e.printStackTrace();
-            String detail = e.getMessage() != null ? e.getMessage() : ERRO_GERAL;
-            out.print(errorJson(safeClientMessage(detail)));
+            out.print(errorJson(ERRO_GERAL));
         } catch (Exception e) {
             e.printStackTrace();
             out.print(errorJson(ERRO_GERAL));
         }
+    }
+
+    private SugestaoViagem ensureSugestao(CriarSugestaoRequest pedido, SugestaoViagem sugestao) {
+        if (sugestao != null) {
+            return sugestao;
+        }
+        SugestaoViagem s = new SugestaoViagem();
+        String origem = pedido.origem != null ? pedido.origem.trim() : "";
+        String destino = pedido.destino != null ? pedido.destino.trim() : "";
+        s.titulo = (!origem.isEmpty() && !destino.isEmpty()) ? origem + " → " + destino : "Oferta pública";
+        s.descricao = "";
+        s.hotelSugerido = pedido.hotelSelecionado != null && pedido.hotelSelecionado.nome != null
+                ? pedido.hotelSelecionado.nome : "";
+        s.transporteSugerido = "";
+        s.precoEstimadoTotal = 0;
+        return s;
     }
 
     private SugestaoViagem parseSugestao(String body) {
@@ -86,28 +91,6 @@ public class GuardarViagemServlet extends HttpServlet {
             return null;
         }
         return SugestaoViagem.fromJson(block);
-    }
-
-    private Integer getClienteId(HttpServletRequest req) {
-        HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("userId") == null) {
-            return null;
-        }
-        try {
-            return Integer.valueOf(session.getAttribute("userId").toString());
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    private String safeClientMessage(String detail) {
-        if (detail == null || detail.isBlank()) {
-            return ERRO_GERAL;
-        }
-        if (detail.length() > 180) {
-            detail = detail.substring(0, 180) + "…";
-        }
-        return ERRO_GERAL + " (" + detail + ")";
     }
 
     private String errorJson(String message) {

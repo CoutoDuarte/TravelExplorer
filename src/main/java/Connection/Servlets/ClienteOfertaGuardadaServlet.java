@@ -44,8 +44,15 @@ public class ClienteOfertaGuardadaServlet extends HttpServlet {
 
             if ("remove".equals(action)) {
                 ClienteOfertaGuardadaCRUD.removerOferta(idCliente, idPacote);
-            } else if ("save".equals(action)) {
-                ClienteOfertaGuardadaCRUD.guardarOferta(idCliente, idPacote);
+                String sep = back.contains("?") ? "&" : "?";
+                resp.sendRedirect(back + sep + "offerRemoved=1");
+                return;
+            }
+            if ("save".equals(action)) {
+                boolean saved = ClienteOfertaGuardadaCRUD.guardarOferta(idCliente, idPacote);
+                String sep = back.contains("?") ? "&" : "?";
+                resp.sendRedirect(back + sep + (saved ? "offerSaved=1" : "offerSaveError=1"));
+                return;
             }
 
             resp.sendRedirect(back);

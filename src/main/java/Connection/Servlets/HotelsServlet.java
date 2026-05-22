@@ -28,7 +28,7 @@ public class HotelsServlet extends HttpServlet {
         resp.setContentType("application/json;charset=UTF-8");
         PrintWriter out = resp.getWriter();
 
-        if (!BookingJsonHelper.isClienteLoggedIn(req)) {
+        if (!BookingJsonHelper.canUseTravelWizard(req)) {
             out.print("{\"ok\":false,\"authRequired\":true,\"message\":\""
                     + JsonUtil.escape(ERRO_AUTH) + "\"}");
             return;

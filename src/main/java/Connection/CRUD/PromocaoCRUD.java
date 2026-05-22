@@ -82,6 +82,27 @@ public class PromocaoCRUD {
         return list;
     }
 
+    public Promocao findActiveByPacote(int idPacote) {
+        if (idPacote <= 0) {
+            return null;
+        }
+        String sql = "SELECT idPromocao, titulo, destino, periodo_inicio, periodo_fim, condicao, estado, idPacote "
+                + "FROM PROMOCAO WHERE idPacote = ? AND LOWER(estado) IN ('ativa', 'activo', 'ativo', 'active', 'publicada') "
+                + "ORDER BY idPromocao DESC LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return map(rs);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public Promocao findById(int idPromocao) {
         String sql = "SELECT idPromocao, titulo, destino, periodo_inicio, periodo_fim, condicao, estado, idPacote FROM PROMOCAO WHERE idPromocao = ?";
         try (Connection conn = DBConnection.getConnection();

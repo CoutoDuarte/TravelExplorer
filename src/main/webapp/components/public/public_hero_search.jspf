@@ -2,7 +2,22 @@
 <%
 boolean clienteLoggedIn = Boolean.TRUE.equals(session.getAttribute("auth"))
         && "cliente".equals(session.getAttribute("userType"));
+boolean staffLoggedIn = Boolean.TRUE.equals(session.getAttribute("auth"))
+        && "staff".equals(session.getAttribute("userType"));
+Object wizardAuthAttr = request.getAttribute("teWizardAuthorized");
+boolean wizardAuthorized = wizardAuthAttr != null
+        ? Boolean.TRUE.equals(wizardAuthAttr)
+        : (clienteLoggedIn && !staffLoggedIn);
+Object modeAttr = request.getAttribute("teWizardMode");
+String wizardMode = modeAttr != null ? String.valueOf(modeAttr) : "client";
+Object guardarAttr = request.getAttribute("teGuardarUrl");
+String guardarUrl = guardarAttr != null
+        ? String.valueOf(guardarAttr)
+        : request.getContextPath() + "/guardar-viagem";
 String loginUrl = request.getContextPath() + "/index.jsp?page=login";
+String airportSearchUrl = request.getContextPath() + "/flight-autocomplete";
+Object saveLabelAttr = request.getAttribute("teSaveLabel");
+String saveLabel = saveLabelAttr != null ? String.valueOf(saveLabelAttr) : "";
 %>
 <div class="hero-studio__search-wrap" id="public-search-wrap">
 <div class="public-search-box te-search" id="public-search-box">
@@ -15,9 +30,13 @@ String loginUrl = request.getContextPath() + "/index.jsp?page=login";
         data-search-url="${pageContext.request.contextPath}/pesquisar"
         data-hotels-url="${pageContext.request.contextPath}/hotels"
         data-sugestao-url="${pageContext.request.contextPath}/criar-sugestao"
-        data-guardar-url="${pageContext.request.contextPath}/guardar-viagem"
+        data-guardar-url="<%= guardarUrl %>"
+        data-wizard-mode="<%= wizardMode %>"
+        data-wizard-authorized="<%= wizardAuthorized %>"
         data-cliente-logged-in="<%= clienteLoggedIn %>"
+        data-airport-search-url="<%= airportSearchUrl %>"
         data-login-url="<%= loginUrl %>"
+        data-save-label="<%= saveLabel %>"
         novalidate>
         <div class="te-search__field te-airport-field" data-airport-field="origem">
             <label class="public-search-box__label" for="origem-display">Origem</label>
@@ -88,10 +107,12 @@ String loginUrl = request.getContextPath() + "/index.jsp?page=login";
         </button>
     </form>
 
+    <% if (!wizardAuthorized) { %>
     <div class="public-search-login" id="public-search-login-required" hidden>
         <p class="public-search-login__text">Para pesquisar e guardar viagens, precisa de iniciar sessão como cliente.</p>
         <a class="btn btn-primary" href="<%= loginUrl %>">Iniciar sessão</a>
     </div>
+    <% } %>
 
     <div class="public-search-status" id="public-search-loading" hidden>
         <span class="public-search-status__spinner" aria-hidden="true"></span>

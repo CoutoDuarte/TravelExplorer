@@ -1,42 +1,13 @@
-const TE_AIRPORTS = [
-  { code: 'OPO', city: 'Porto', name: 'Aeroporto Francisco Sá Carneiro', country: 'Portugal' },
-  { code: 'LIS', city: 'Lisboa', name: 'Aeroporto Humberto Delgado', country: 'Portugal' },
-  { code: 'FAO', city: 'Faro', name: 'Aeroporto de Faro', country: 'Portugal' },
-  { code: 'FNC', city: 'Funchal', name: 'Aeroporto Cristiano Ronaldo', country: 'Portugal' },
-  { code: 'PDL', city: 'Ponta Delgada', name: 'Aeroporto João Paulo II', country: 'Portugal' },
-  { code: 'MAD', city: 'Madrid', name: 'Adolfo Suárez Madrid-Barajas', country: 'Espanha' },
-  { code: 'BCN', city: 'Barcelona', name: 'El Prat', country: 'Espanha' },
-  { code: 'CDG', city: 'Paris', name: 'Charles de Gaulle', country: 'França' },
-  { code: 'ORY', city: 'Paris', name: 'Orly', country: 'França' },
-  { code: 'LHR', city: 'Londres', name: 'Heathrow', country: 'Reino Unido' },
-  { code: 'LGW', city: 'Londres', name: 'Gatwick', country: 'Reino Unido' },
-  { code: 'AMS', city: 'Amesterdão', name: 'Schiphol', country: 'Países Baixos' },
-  { code: 'FRA', city: 'Frankfurt', name: 'Frankfurt', country: 'Alemanha' },
-  { code: 'MUC', city: 'Munique', name: 'Munique', country: 'Alemanha' },
-  { code: 'FCO', city: 'Roma', name: 'Fiumicino', country: 'Itália' },
-  { code: 'MXP', city: 'Milão', name: 'Malpensa', country: 'Itália' },
-  { code: 'VCE', city: 'Veneza', name: 'Marco Polo', country: 'Itália' },
-  { code: 'ZRH', city: 'Zurique', name: 'Zurique', country: 'Suíça' },
-  { code: 'GVA', city: 'Genebra', name: 'Genebra', country: 'Suíça' },
-  { code: 'BRU', city: 'Bruxelas', name: 'Bruxelas', country: 'Bélgica' },
-  { code: 'DUB', city: 'Dublin', name: 'Dublin', country: 'Irlanda' },
-  { code: 'CPH', city: 'Copenhaga', name: 'Copenhaga', country: 'Dinamarca' },
-  { code: 'ARN', city: 'Estocolmo', name: 'Arlanda', country: 'Suécia' },
-  { code: 'OSL', city: 'Oslo', name: 'Oslo', country: 'Noruega' },
-  { code: 'ATH', city: 'Atenas', name: 'Atenas', country: 'Grécia' },
-  { code: 'IST', city: 'Istambul', name: 'Istambul', country: 'Turquia' },
-  { code: 'JFK', city: 'Nova Iorque', name: 'John F. Kennedy', country: 'EUA' },
-  { code: 'EWR', city: 'Nova Iorque', name: 'Newark', country: 'EUA' },
-  { code: 'MIA', city: 'Miami', name: 'Miami', country: 'EUA' },
-  { code: 'BOS', city: 'Boston', name: 'Boston', country: 'EUA' },
-  { code: 'LAX', city: 'Los Angeles', name: 'Los Angeles', country: 'EUA' },
-  { code: 'DXB', city: 'Dubai', name: 'Dubai', country: 'Emirados Árabes' },
-  { code: 'DOH', city: 'Doha', name: 'Doha', country: 'Qatar' },
-  { code: 'GRU', city: 'São Paulo', name: 'Guarulhos', country: 'Brasil' },
-  { code: 'GIG', city: 'Rio de Janeiro', name: 'Galeão', country: 'Brasil' },
-  { code: 'RAI', city: 'Praia', name: 'Cabo Verde', country: 'Cabo Verde' },
-  { code: 'LAD', city: 'Luanda', name: '4 de Fevereiro', country: 'Angola' },
-];
+const TE_AIRPORT_FALLBACK = {
+  maia: { code: 'OPO', city: 'Porto', name: 'Aeroporto Francisco Sá Carneiro', label: 'Porto · Aeroporto Francisco Sá Carneiro (OPO)' },
+  porto: { code: 'OPO', city: 'Porto', name: 'Aeroporto Francisco Sá Carneiro', label: 'Porto · Aeroporto Francisco Sá Carneiro (OPO)' },
+  lisboa: { code: 'LIS', city: 'Lisboa', name: 'Aeroporto Humberto Delgado', label: 'Lisboa · Aeroporto Humberto Delgado (LIS)' },
+  lisbon: { code: 'LIS', city: 'Lisboa', name: 'Aeroporto Humberto Delgado', label: 'Lisboa · Aeroporto Humberto Delgado (LIS)' },
+};
+
+const TE_AIRPORT_SEARCH_DEBOUNCE = {};
+const TE_AIRPORT_LOADING = 'A procurar aeroportos...';
+const TE_AIRPORT_NO_MATCH = 'Não encontrámos um aeroporto para essa pesquisa.';
 
 document.addEventListener('DOMContentLoaded', () => {
   initializePublicArea();
@@ -76,9 +47,10 @@ function initializeTravelSearch() {
   hideElement(resultsEl);
   hideElement(loginEl);
 
-  initAirportField('origem');
-  initAirportField('destino');
+  initAirportField('origem', form);
+  initAirportField('destino', form);
   initPassengerSelector();
+  initTravelDateValidation(form);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -86,56 +58,81 @@ function initializeTravelSearch() {
   });
 }
 
-function initAirportField(prefix) {
+function initAirportField(prefix, form) {
   const display = document.getElementById(`${prefix}-display`);
   const hidden = document.getElementById(prefix);
   const dropdown = document.getElementById(`${prefix}-dropdown`);
   if (!display || !hidden || !dropdown) return;
 
-  const render = (query) => {
-    const matches = filterAirports(query);
+  const showLoading = () => {
+    dropdown.innerHTML = `<p class="te-airport-option te-airport-option--loading">${escapeHtml(TE_AIRPORT_LOADING)}</p>`;
+    dropdown.hidden = false;
+  };
+
+  const renderOptions = (matches, emptyMessage) => {
     if (!matches.length) {
+      dropdown.innerHTML = `<p class="te-airport-option te-airport-option--empty">${escapeHtml(emptyMessage || TE_AIRPORT_NO_MATCH)}</p>`;
+      dropdown.hidden = false;
+      return;
+    }
+    dropdown.innerHTML = matches.map((airport) => {
+      const label = airportDisplayLabel(airport);
+      const sub = airport.name && airport.city && airport.name !== airport.city
+        ? airport.name
+        : (airport.name || airport.city || '');
+      return `
+      <button type="button" class="te-airport-option" data-code="${escapeHtml(airport.code)}" data-label="${escapeHtml(label)}">
+        <span class="te-airport-option__code">${escapeHtml(airport.code)}</span>
+        <span class="te-airport-option__body">
+          <strong>${escapeHtml(label)}</strong>
+          ${sub ? `<span>${escapeHtml(sub)}</span>` : ''}
+        </span>
+      </button>`;
+    }).join('');
+    dropdown.hidden = false;
+  };
+
+  const runSearch = (query) => {
+    const q = String(query || '').trim();
+    if (q.length < 2) {
       dropdown.hidden = true;
       dropdown.innerHTML = '';
       return;
     }
-    dropdown.innerHTML = matches.map((airport) => `
-      <button type="button" class="te-airport-option" data-code="${airport.code}" data-label="${escapeHtml(airportLabel(airport))}">
-        <span class="te-airport-option__code">${airport.code}</span>
-        <span class="te-airport-option__body">
-          <strong>${escapeHtml(airport.city)} — ${escapeHtml(airport.name)}</strong>
-          <span>${escapeHtml(airport.country)}</span>
-        </span>
-      </button>
-    `).join('');
-    dropdown.hidden = false;
+    const fallback = tinyAirportFallback(q);
+    if (fallback) {
+      renderOptions([fallback]);
+      return;
+    }
+    showLoading();
+    scheduleAirportAutocomplete(prefix, q, form, renderOptions);
   };
 
   display.addEventListener('input', () => {
     hidden.value = '';
-    render(display.value);
+    runSearch(display.value);
   });
 
-  display.addEventListener('focus', () => render(display.value));
+  display.addEventListener('focus', () => runSearch(display.value));
 
   dropdown.addEventListener('click', (event) => {
     const option = event.target.closest('.te-airport-option');
-    if (!option) return;
+    if (!option || !option.dataset.code) return;
     hidden.value = option.dataset.code;
-    display.value = option.dataset.label;
+    display.value = option.dataset.label || option.dataset.code;
     dropdown.hidden = true;
   });
 
   display.addEventListener('blur', () => {
-    window.setTimeout(() => {
+    window.setTimeout(async () => {
       if (!dropdown.matches(':hover') && !display.matches(':focus')) {
         dropdown.hidden = true;
       }
-      if (!hidden.value && display.value.trim()) {
-        const resolved = resolveAirportFromText(display.value.trim());
+      if (!hidden.value && display.value.trim().length >= 2) {
+        const resolved = await resolveAirportForQuery(display.value.trim(), form);
         if (resolved) {
           hidden.value = resolved.code;
-          display.value = airportLabel(resolved);
+          display.value = airportDisplayLabel(resolved);
         }
       }
     }, 150);
@@ -203,36 +200,121 @@ document.addEventListener('click', (event) => {
   }
 });
 
-function filterAirports(query) {
-  const q = normalizeSearch(query);
-  if (!q) return TE_AIRPORTS.slice(0, 8);
-  return TE_AIRPORTS.filter((airport) => {
-    const hay = [
-      airport.code,
-      airport.city,
-      airport.name,
-      airport.country,
-    ].map(normalizeSearch).join(' ');
-    return hay.includes(q) || airport.code.toLowerCase() === q;
-  }).slice(0, 8);
+function airportDisplayLabel(airport) {
+  if (!airport) return '';
+  if (airport.label) return airport.label;
+  const city = airport.city || '';
+  const name = airport.name || '';
+  const code = airport.code || '';
+  if (city && name && city !== name) {
+    return `${city} · ${name} (${code})`;
+  }
+  if (name) return `${name} (${code})`;
+  if (city) return `${city} (${code})`;
+  return code;
 }
 
-function resolveAirportFromText(text) {
-  const q = normalizeSearch(text);
-  const exact = TE_AIRPORTS.find((a) =>
-    normalizeSearch(a.code) === q
-    || normalizeSearch(a.city) === q
-    || normalizeSearch(`${a.city} ${a.name}`) === q);
-  if (exact) return exact;
-  const partial = TE_AIRPORTS.find((a) =>
-    normalizeSearch(a.city).includes(q)
-    || normalizeSearch(a.name).includes(q)
-    || normalizeSearch(a.country).includes(q));
-  return partial || null;
+function tinyAirportFallback(query) {
+  const q = normalizeSearch(query);
+  return TE_AIRPORT_FALLBACK[q] || null;
+}
+
+function scheduleAirportAutocomplete(prefix, query, form, renderOptions) {
+  const key = `${prefix}:${normalizeSearch(query)}`;
+  if (TE_AIRPORT_SEARCH_DEBOUNCE[key]) {
+    window.clearTimeout(TE_AIRPORT_SEARCH_DEBOUNCE[key]);
+  }
+  TE_AIRPORT_SEARCH_DEBOUNCE[key] = window.setTimeout(async () => {
+    const display = document.getElementById(`${prefix}-display`);
+    if (!display || normalizeSearch(display.value) !== normalizeSearch(query)) {
+      return;
+    }
+    const airports = await fetchFlightAutocomplete(query, form);
+    if (!display || normalizeSearch(display.value) !== normalizeSearch(query)) {
+      return;
+    }
+    if (airports.length) {
+      renderOptions(airports);
+    } else {
+      const fallback = tinyAirportFallback(query);
+      if (fallback) {
+        renderOptions([fallback]);
+      } else {
+        renderOptions([], TE_AIRPORT_NO_MATCH);
+      }
+    }
+  }, 250);
+}
+
+async function fetchFlightAutocomplete(query, form) {
+  const base = form?.dataset.airportSearchUrl;
+  if (!base || !query || query.trim().length < 2) return [];
+  try {
+    const response = await fetch(`${base}?q=${encodeURIComponent(query.trim())}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((item) => ({
+        code: String(item.code || '').toUpperCase().slice(0, 3),
+        name: item.name || '',
+        city: item.city || '',
+        label: item.label || '',
+      }))
+      .filter((a) => a.code.length === 3);
+  } catch (err) {
+    return [];
+  }
+}
+
+async function resolveAirportForQuery(text, form) {
+  const q = String(text || '').trim();
+  if (q.length < 2) return null;
+  const fallback = tinyAirportFallback(q);
+  if (fallback) return fallback;
+  const airports = await fetchFlightAutocomplete(q, form);
+  return airports.length ? airports[0] : null;
+}
+
+function initTravelDateValidation(form) {
+  const partida = form.elements.data_partida;
+  const regresso = form.elements.data_regresso;
+  if (!partida || !regresso) return;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isoToday = today.toISOString().slice(0, 10);
+  partida.setAttribute('min', isoToday);
+  const syncReturnMin = () => {
+    regresso.setAttribute('min', partida.value || isoToday);
+  };
+  partida.addEventListener('change', syncReturnMin);
+  syncReturnMin();
+}
+
+function validateTravelDates(form) {
+  const partidaVal = form.elements.data_partida?.value;
+  const regressoVal = form.elements.data_regresso?.value;
+  if (!partidaVal || !regressoVal) {
+    return { ok: false, message: 'Preenche as datas de partida e regresso.' };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const partida = new Date(`${partidaVal}T00:00:00`);
+  const regresso = new Date(`${regressoVal}T00:00:00`);
+  if (partida < today) {
+    return { ok: false, message: 'A data de partida não pode ser anterior à data de hoje.' };
+  }
+  if (regresso < partida) {
+    return { ok: false, message: 'A data de regresso não pode ser anterior à data de partida.' };
+  }
+  return { ok: true };
 }
 
 function airportLabel(airport) {
-  return `${airport.city} — ${airport.name}`;
+  return airportDisplayLabel(airport);
 }
 
 function normalizeSearch(value) {
@@ -251,8 +333,12 @@ function buildPassengerSummary(adultos, criancas) {
   return `${adultos} adulto${adultos > 1 ? 's' : ''}, ${criancas} criança${criancas > 1 ? 's' : ''}`;
 }
 
-function isClienteLoggedIn(form) {
-  return form.dataset.clienteLoggedIn === 'true';
+function isWizardAuthorized(form) {
+  return form.dataset.wizardAuthorized === 'true' || form.dataset.clienteLoggedIn === 'true';
+}
+
+function isStaffOfferMode(form) {
+  return form?.dataset.wizardMode === 'staff';
 }
 
 async function runTravelSearch(form) {
@@ -266,7 +352,7 @@ async function runTravelSearch(form) {
   hideElement(resultsEl);
   hideElement(loginEl);
 
-  if (!isClienteLoggedIn(form)) {
+  if (!isWizardAuthorized(form)) {
     showElement(loginEl);
     loginEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     return;
@@ -278,12 +364,20 @@ async function runTravelSearch(form) {
   let destino = form.elements.destino.value.trim();
 
   if (!origem && origemDisplay?.value.trim()) {
-    const resolved = resolveAirportFromText(origemDisplay.value.trim());
-    if (resolved) origem = resolved.code;
+    const resolved = await resolveAirportForQuery(origemDisplay.value.trim(), form);
+    if (resolved) {
+      origem = resolved.code;
+      form.elements.origem.value = resolved.code;
+      origemDisplay.value = airportDisplayLabel(resolved);
+    }
   }
   if (!destino && destinoDisplay?.value.trim()) {
-    const resolved = resolveAirportFromText(destinoDisplay.value.trim());
-    if (resolved) destino = resolved.code;
+    const resolved = await resolveAirportForQuery(destinoDisplay.value.trim(), form);
+    if (resolved) {
+      destino = resolved.code;
+      form.elements.destino.value = resolved.code;
+      destinoDisplay.value = airportDisplayLabel(resolved);
+    }
   }
 
   const dataPartida = form.elements.data_partida.value;
@@ -291,8 +385,14 @@ async function runTravelSearch(form) {
   const adultos = form.elements.adultos.value;
   const criancas = form.elements.criancas.value;
 
+  const dateCheck = validateTravelDates(form);
+  if (!dateCheck.ok) {
+    showSearchError(errorEl, resultsEl, loadingEl, dateCheck.message);
+    return;
+  }
+
   if (!origem || !destino || !dataPartida || !dataRegresso) {
-    showSearchError(errorEl, resultsEl, loadingEl);
+    showSearchError(errorEl, resultsEl, loadingEl, 'Seleciona aeroportos de origem e destino válidos.');
     return;
   }
 
@@ -428,6 +528,9 @@ function canNavigateToWizardStep(container, step) {
     case 4:
       return isWizardStep3Complete();
     case 5:
+      if (isStaffOfferMode(container.__form)) {
+        return Boolean(tripSelection.flightRegresso) && isWizardStep3Complete();
+      }
       return Boolean(tripSelection.sugestao);
     default:
       return false;
@@ -457,7 +560,7 @@ function formatFlightStepSummary(voo) {
   if (!voo) return '';
   const parts = [decodeApiText(voo.companhia || ''), decodeApiText(voo.numeroVoo || '')].filter(Boolean);
   const label = parts.join(' ').trim();
-  const time = formatTimeShort(voo.partida);
+  const time = formatTimeDisplay(voo.partida);
   return label ? `${label} · ${time}` : time;
 }
 
@@ -465,8 +568,8 @@ function formatFlightChoiceLine(voo, title) {
   if (!voo) return '';
   const airline = decodeApiText(voo.companhia || '');
   const num = decodeApiText(voo.numeroVoo || '');
-  const dep = formatTimeShort(voo.partida);
-  const arr = formatTimeShort(voo.chegada);
+  const dep = formatTimeDisplay(voo.partida);
+  const arr = formatTimeDisplay(voo.chegada);
   return `${title}: ${airline} ${num} · ${decodeApiText(voo.origem)} ${dep} → ${decodeApiText(voo.destino)} ${arr} · ${formatEuro(voo.precoTotal)}`;
 }
 
@@ -561,7 +664,7 @@ function formatFlightStripValue(voo) {
   if (!voo) return '';
   const airline = decodeApiText(voo.companhia || '');
   const num = decodeApiText(voo.numeroVoo || '');
-  const route = `${decodeApiText(voo.origem)} ${formatTimeShort(voo.partida)} → ${decodeApiText(voo.destino)} ${formatTimeShort(voo.chegada)}`;
+  const route = `${decodeApiText(voo.origem)} ${formatTimeDisplay(voo.partida)} → ${decodeApiText(voo.destino)} ${formatTimeDisplay(voo.chegada)}`;
   return `${airline} ${num} · ${route} · ${formatEuro(voo.precoTotal)}`;
 }
 
@@ -620,7 +723,7 @@ function renderReviewCard(title, bodyHtml, alterStep) {
     ? `<button type="button" class="btn btn-ghost te-review-card__alter" data-review-alter="${alterStep}">Alterar</button>`
     : '';
   return `
-    <article class="te-review-card">
+    <article class="te-review-card te-summary-card">
       <div class="te-review-card__head">
         <h4>${escapeHtml(title)}</h4>
         ${alterBtn}
@@ -703,6 +806,7 @@ function renderBookingWizard(container, data, meta, form) {
   container.__form = form;
   container.classList.add('te-booking-panel--active');
   document.getElementById('hero-studio')?.classList.add('hero-studio--results');
+  const staffWizard = isStaffOfferMode(form);
 
   container.innerHTML = `
     <header class="te-booking-head">
@@ -717,18 +821,18 @@ function renderBookingWizard(container, data, meta, form) {
 
     <div class="te-wizard-selection-strip" id="wizard-selection-strip"></div>
 
-    <div class="te-wizard">
-      <section class="te-wizard-step is-active" data-wizard-step="1">
+    <div class="te-wizard${staffWizard ? ' te-wizard--staff-offer' : ''}">
+      <section class="te-wizard-step te-wizard-card is-active" data-wizard-step="1">
         <h3 class="te-section-title">Escolhe o voo de ida</h3>
         ${renderFlightListSelectable(voosIda, 'ida', 'Não foram encontrados voos de ida para esta data.')}
       </section>
 
-      <section class="te-wizard-step" data-wizard-step="2" hidden>
+      <section class="te-wizard-step te-wizard-card" data-wizard-step="2" hidden>
         <h3 class="te-section-title">Escolhe o voo de regresso</h3>
         ${renderFlightListSelectable(voosRegresso, 'regresso', 'Não encontrámos voos de regresso para esta data.')}
       </section>
 
-      <section class="te-wizard-step" data-wizard-step="3" hidden>
+      <section class="te-wizard-step te-wizard-card" data-wizard-step="3" hidden>
         <h3 class="te-section-title">Escolhe alojamento</h3>
         <p class="te-wizard-step__hint">O alojamento é opcional. Pode continuar sem selecionar.</p>
         <div class="te-wizard-loading" id="wizard-hotels-loading" hidden>
@@ -741,18 +845,18 @@ function renderBookingWizard(container, data, meta, form) {
         </div>
       </section>
 
-      <section class="te-wizard-step" data-wizard-step="4" hidden>
-        <h3 class="te-section-title">Revê o teu plano</h3>
-        <p class="te-wizard-step__lead">Confirma os voos e o alojamento antes de criar o plano personalizado.</p>
-        <div class="te-wizard-review" id="wizard-pre-summary"></div>
+      <section class="te-wizard-step te-wizard-card" data-wizard-step="4" hidden>
+        <h3 class="te-section-title">${staffWizard ? 'Rever oferta' : 'Revê o teu plano'}</h3>
+        <p class="te-wizard-step__lead">${staffWizard ? 'Confirma os voos e o alojamento antes de publicar a oferta.' : 'Confirma os voos e o alojamento antes de criar o plano personalizado.'}</p>
+        <div class="te-wizard-review te-summary-card" id="wizard-pre-summary"></div>
         <div class="te-wizard-loading" id="wizard-sugestao-loading" hidden>
           <span class="public-search-status__spinner" aria-hidden="true"></span>
-          <p>A preparar o teu plano de viagem...</p>
+          <p>${staffWizard ? 'A preparar sugestões…' : 'A preparar o teu plano de viagem...'}</p>
         </div>
-        <button type="button" class="btn btn-primary te-wizard-create-btn" id="wizard-create-sugestao">Criar plano de viagem</button>
+        <button type="button" class="btn btn-primary te-wizard-create-btn" id="wizard-create-sugestao">${staffWizard ? 'Gerar plano com IA (opcional)' : 'Criar plano de viagem'}</button>
       </section>
 
-      <section class="te-wizard-step" data-wizard-step="5" hidden>
+      <section class="te-wizard-step te-wizard-card" data-wizard-step="5" hidden>
         <div id="wizard-final-package"></div>
       </section>
     </div>
@@ -781,6 +885,43 @@ function renderBookingWizard(container, data, meta, form) {
 
   container.__scrollToPanelOnInit = true;
   initBookingWizard(container);
+  if (isStaffOfferMode(form)) {
+    initStaffOfferWizardActions(container);
+  }
+}
+
+function buildMinimalOfferSugestao(meta, form) {
+  const origem = meta?.origem || '';
+  const destino = meta?.destino || '';
+  const staffMode = isStaffOfferMode(form);
+  return {
+    titulo: origem && destino ? `${origem} → ${destino}` : (staffMode ? 'Oferta pública' : 'A sua viagem'),
+    descricao: '',
+    hotelSugerido: tripSelection.hotel?.nome || '',
+    transporteSugerido: '',
+    atividades: [],
+    precoEstimadoTotal: computeSelectionTotal(),
+    resumoFinal: staffMode ? 'Oferta criada pela equipa TravelExplorer.' : 'Reserva com os componentes selecionados.',
+  };
+}
+
+function initStaffOfferWizardActions(container) {
+  const step4 = container.querySelector('[data-wizard-step="4"]');
+  const createBtn = container.querySelector('#wizard-create-sugestao');
+  if (!step4 || !createBtn || step4.querySelector('#wizard-publish-offer-preview')) {
+    return;
+  }
+  const previewBtn = document.createElement('button');
+  previewBtn.type = 'button';
+  previewBtn.className = 'btn btn-primary te-wizard-create-btn';
+  previewBtn.id = 'wizard-publish-offer-preview';
+  previewBtn.textContent = 'Continuar para publicar';
+  createBtn.insertAdjacentElement('afterend', previewBtn);
+  previewBtn.addEventListener('click', () => {
+    tripSelection.sugestao = buildMinimalOfferSugestao(container.__meta, container.__form);
+    renderFinalPackage(container);
+    goToWizardStep(container, 5);
+  });
 }
 
 function safeHotelImageUrl(raw) {
@@ -854,11 +995,10 @@ function renderHotelCardsSelectable(hotels) {
     const gradientStyle = buildGradientStyle(hotel.nome || hotel.zona || 'hotel', index + 1);
     const imgSrc = safeHotelImageUrl(hotel.imagemUrl);
     const reviews = Number(hotel.reviews);
-    const hotelBadge = formatHotelBadge(hotel);
-    const hotelLabel = formatHotelLabel(hotel);
     const ratingMeta = formatHotelRatingMeta(hotel);
+    const hotelLabel = formatHotelLabel(hotel);
     const metaLine = ratingMeta ? `<p class="te-hotel-card__meta">${escapeHtml(ratingMeta)}</p>` : '';
-    const categoryLine = hotelLabel ? `<p class="te-hotel-card__category">${escapeHtml(hotelLabel)}</p>` : '';
+    const categoryLine = !ratingMeta && hotelLabel ? `<p class="te-hotel-card__category">${escapeHtml(hotelLabel)}</p>` : '';
     const chips = renderHotelAmenityChips(hotel.amenities, 3);
     const visualInner = imgSrc
       ? `<img class="te-hotel-card__photo" src="${escapeHtml(imgSrc)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.style.display='none'"><div class="te-hotel-card__shade"></div>`
@@ -868,7 +1008,6 @@ function renderHotelCardsSelectable(hotels) {
       <article class="te-hotel-card te-selectable" data-hotel-id="${id}">
         <div class="te-hotel-card__visual" style="${gradientStyle}">
           ${visualInner}
-          <span class="te-hotel-card__visual-badge">${escapeHtml(hotelBadge || '—')}</span>
           <strong class="te-hotel-card__visual-title">${escapeHtml(decodeApiText(hotel.nome))}</strong>
         </div>
         <div class="te-hotel-card__body">
@@ -898,14 +1037,8 @@ function renderFlightListSelectable(voos, prefix, emptyMessage) {
 }
 
 function formatFlightStopsLabel(voo) {
-  const escalas = Number(voo?.numEscalas);
-  if (!Number.isNaN(escalas) && escalas >= 0) {
-    if (escalas === 0) return 'Direto';
-    if (escalas === 1) return '1 escala';
-    return `${escalas} escalas`;
-  }
-  const segs = voo?.segmentos;
-  if (Array.isArray(segs) && segs.length > 1) {
+  const segs = Array.isArray(voo?.segmentos) ? voo.segmentos.filter((s) => s && String(s.origem || s.destino || '').trim()) : [];
+  if (segs.length > 1) {
     const n = segs.length - 1;
     if (n === 1) return '1 escala';
     return `${n} escalas`;
@@ -913,51 +1046,71 @@ function formatFlightStopsLabel(voo) {
   return 'Direto';
 }
 
+function getClientSaveLabel(form) {
+  const custom = form?.dataset?.saveLabel;
+  if (custom && custom.trim()) return custom.trim();
+  return 'Guardar viagem';
+}
+
 function renderFlightSelectable(voo, id) {
-  const dep = formatTimeShort(voo.partida);
-  const arr = formatTimeShort(voo.chegada);
+  const dep = formatTimeDisplay(voo.partida);
+  const arr = formatTimeDisplay(voo.chegada);
   const stops = formatFlightStopsLabel(voo);
-  const segments = Array.isArray(voo.segmentos) && voo.segmentos.length > 1 ? voo.segmentos : null;
-  const segmentDetails = segments
-    ? segments.map((seg, idx) => `
+  const origem = decodeApiText(voo.origem || '').trim();
+  const destino = decodeApiText(voo.destino || '').trim();
+  const route = origem && destino ? `${origem} → ${destino}` : (origem || destino || 'Rota não disponível');
+  const durRaw = decodeApiText(voo.duracao || '').trim();
+  const dur = durRaw && durRaw !== '—' && durRaw !== '-' ? durRaw : '';
+  const flightNo = decodeApiText(voo.numeroVoo || '').trim();
+  const segments = Array.isArray(voo.segmentos)
+    ? voo.segmentos.filter((s) => s && String(s.origem || s.destino || s.companhia || '').trim())
+    : [];
+  const segmentDetails = segments.length > 1
+    ? segments.map((seg, idx) => {
+        const segDep = formatTimeDisplay(seg.partida);
+        const segArr = formatTimeDisplay(seg.chegada);
+        const timeLine = [segDep !== 'Horário não disponível' ? `Partida ${segDep}` : '', segArr !== 'Horário não disponível' ? `Chegada ${segArr}` : ''].filter(Boolean).join(' · ');
+        return `
         <section>
           <h5>Segmento ${idx + 1}</h5>
-          <p>${escapeHtml(decodeApiText(seg.origem || ''))} → ${escapeHtml(decodeApiText(seg.destino || ''))} · ${escapeHtml(decodeApiText(seg.numeroVoo || ''))}</p>
-        </section>`).join('')
+          <p><strong>${escapeHtml(decodeApiText(seg.companhia || voo.companhia || ''))}</strong> ${escapeHtml(decodeApiText(seg.numeroVoo || ''))}</p>
+          <p>${escapeHtml(decodeApiText(seg.origem || ''))} → ${escapeHtml(decodeApiText(seg.destino || ''))}</p>
+          ${timeLine ? `<p>${escapeHtml(timeLine)}</p>` : ''}
+        </section>`;
+      }).join('')
     : '';
+  const depLabel = dep === 'Horário não disponível' ? dep : dep;
+  const arrLabel = arr === 'Horário não disponível' ? arr : arr;
+  const origLabel = origem || '—';
+  const destLabel = destino || '—';
   return `
-    <article class="te-flight-row te-selectable" data-flight-id="${id}">
-      <div class="te-flight-row__main">
-        <div class="te-flight-row__airline">
-          <strong>${escapeHtml(decodeApiText(voo.companhia || 'Companhia'))}</strong>
-          <span>${escapeHtml(decodeApiText(voo.numeroVoo || ''))}</span>
-          <span class="te-flight-row__stops">${escapeHtml(stops)}</span>
+    <article class="te-flight-card te-selectable" data-flight-id="${id}">
+      <div class="te-flight-card__main">
+        <div class="te-flight-card__meta">
+          <strong class="te-flight-card__airline">${escapeHtml(decodeApiText(voo.companhia || 'Companhia'))}</strong>
+          ${flightNo ? `<span class="te-flight-card__flightno">${escapeHtml(flightNo)}</span>` : ''}
         </div>
-        <div class="te-flight-row__leg">
-          <span class="te-flight-row__code">${escapeHtml(decodeApiText(voo.origem || ''))}</span>
-          <span class="te-flight-row__time">${escapeHtml(dep)}</span>
+        <div class="te-flight-card__route">
+          <span class="te-flight-card__badge">${escapeHtml(stops)}</span>
+          <div class="te-flight-card__route-times">
+            <span class="te-flight-card__endpoint"><strong>${escapeHtml(origLabel)}</strong> ${escapeHtml(depLabel)}</span>
+            <span class="te-flight-card__arrow">→</span>
+            <span class="te-flight-card__endpoint"><strong>${escapeHtml(destLabel)}</strong> ${escapeHtml(arrLabel)}</span>
+          </div>
+          ${dur ? `<span class="te-flight-card__duration">${escapeHtml(dur)}</span>` : ''}
         </div>
-        <div class="te-flight-row__mid">
-          <span class="te-flight-row__duration">${escapeHtml(decodeApiText(voo.duracao || '—'))}</span>
-        </div>
-        <div class="te-flight-row__leg te-flight-row__leg--end">
-          <span class="te-flight-row__code">${escapeHtml(decodeApiText(voo.destino || ''))}</span>
-          <span class="te-flight-row__time">${escapeHtml(arr)}</span>
-        </div>
-        <div class="te-flight-row__price">
-          <strong>${formatEuro(voo.precoTotal)}</strong>
-        </div>
-        <div class="te-flight-row__actions">
+        <div class="te-flight-card__actions">
+          <div class="te-flight-card__price">${formatEuro(voo.precoTotal)}</div>
           <button type="button" class="btn btn-secondary te-select-btn" data-select-flight="${id}">Selecionar</button>
-          <button type="button" class="btn btn-ghost te-flight-row__details" data-toggle-details="${id}">Detalhes</button>
         </div>
       </div>
       <div class="te-flight-expand" id="${id}" hidden>
+        <button type="button" class="btn btn-ghost te-flight-card__details" data-toggle-details="${id}">Detalhes</button>
         <div class="te-detail-sections te-detail-sections--inline">
-          <section><h5>Origem</h5><p>${escapeHtml(decodeApiText(voo.aeroportoOrigem || voo.origem || '—'))}</p></section>
-          <section><h5>Destino</h5><p>${escapeHtml(decodeApiText(voo.aeroportoDestino || voo.destino || '—'))}</p></section>
-          <section><h5>Partida</h5><p>${escapeHtml(formatDateTime(voo.partida))}</p></section>
-          <section><h5>Chegada</h5><p>${escapeHtml(formatDateTime(voo.chegada))}</p></section>
+          <section><h5>Origem</h5><p>${escapeHtml(decodeApiText(voo.aeroportoOrigem || voo.origem || ''))}</p></section>
+          <section><h5>Destino</h5><p>${escapeHtml(decodeApiText(voo.aeroportoDestino || voo.destino || ''))}</p></section>
+          <section><h5>Partida</h5><p>${escapeHtml(formatDateTimeDisplay(voo.partida))}</p></section>
+          <section><h5>Chegada</h5><p>${escapeHtml(formatDateTimeDisplay(voo.chegada))}</p></section>
           <section><h5>Escalas</h5><p>${escapeHtml(stops)}</p></section>
           <section><h5>Preço por pessoa</h5><p>${formatEuro(voo.precoPorPessoa)}</p></section>
           ${segmentDetails}
@@ -1222,13 +1375,13 @@ function renderHotelDetailsContent(hotel, id) {
   const ratingLine = ratingMeta
     ? `<span class="te-hotel-detail__rating">${escapeHtml(ratingMeta)}${!Number.isNaN(reviews) && reviews > 0 ? ` · ${reviews} avaliações` : ''}</span>`
     : (!Number.isNaN(reviews) && reviews > 0 ? `<span class="te-hotel-detail__rating">${reviews} avaliações</span>` : '');
-  const categoryLine = hotelLabel ? `<span class="te-hotel-detail__category">${escapeHtml(hotelLabel)}</span>` : '';
+  const categoryLine = !ratingMeta && hotelLabel ? `<span class="te-hotel-detail__category">${escapeHtml(hotelLabel)}</span>` : '';
   const zoneLine = hotel.zona ? `<p class="te-hotel-detail__zone">${escapeHtml(decodeApiText(hotel.zona))}</p>` : '';
   const priceLine = hotel.precoEstimado ? `<p class="te-hotel-detail__price">${formatEuro(hotel.precoEstimado)} <small>estimado</small></p>` : '';
   const chips = renderHotelAmenityChips(hotel.amenities, 8).replace('te-hotel-card__chips', 'te-hotel-detail__chips');
   const desc = decodeApiText(hotel.descricao || hotel.descricaoCurta || '');
   const descLine = desc ? `<p class="te-hotel-detail__desc">${escapeHtml(desc)}</p>` : '';
-  const metaRow = [ratingLine, categoryLine].filter(Boolean).join('');
+  const metaRow = [ratingLine, categoryLine].filter(Boolean).join(' · ');
   return `
     <div class="te-hotel-detail">
       <header class="te-hotel-detail__header">
@@ -1252,7 +1405,7 @@ function renderFlightReviewBody(voo) {
   if (!voo) return '<p class="te-review-card__empty">—</p>';
   return `
     <p><strong>${escapeHtml(decodeApiText(voo.companhia || ''))} ${escapeHtml(decodeApiText(voo.numeroVoo || ''))}</strong></p>
-    <p>${escapeHtml(decodeApiText(voo.origem))} ${escapeHtml(formatTimeShort(voo.partida))} → ${escapeHtml(decodeApiText(voo.destino))} ${escapeHtml(formatTimeShort(voo.chegada))}</p>
+    <p>${escapeHtml(decodeApiText(voo.origem))} ${escapeHtml(formatTimeDisplay(voo.partida))} → ${escapeHtml(decodeApiText(voo.destino))} ${escapeHtml(formatTimeDisplay(voo.chegada))}</p>
     <p class="te-review-card__price">${formatEuro(voo.precoTotal)}</p>
   `;
 }
@@ -1324,13 +1477,27 @@ async function createTravelSuggestion(container) {
     });
     const data = await response.json();
     if (!data?.ok || !data.sugestao) {
+      if (isStaffOfferMode(form)) {
+        tripSelection.sugestao = buildMinimalOfferSugestao(meta, form);
+        renderFinalPackage(container);
+        goToWizardStep(container, 5);
+      } else {
+        const preSummary = container.querySelector('#wizard-pre-summary');
+        if (preSummary) {
+          preSummary.insertAdjacentHTML('beforeend', '<p class="te-empty">Não foi possível gerar o plano automático. Tenta novamente.</p>');
+        }
+      }
       return;
     }
     tripSelection.sugestao = data.sugestao;
     renderFinalPackage(container);
     goToWizardStep(container, 5);
   } catch (err) {
-    return;
+    if (isStaffOfferMode(form)) {
+      tripSelection.sugestao = buildMinimalOfferSugestao(meta, form);
+      renderFinalPackage(container);
+      goToWizardStep(container, 5);
+    }
   } finally {
     if (btn) btn.disabled = false;
     if (loading) loading.hidden = true;
@@ -1351,7 +1518,7 @@ function renderPackageFlightLines(voo) {
   if (!voo) return '';
   return `
     <p><strong>${escapeHtml(decodeApiText(voo.companhia || ''))} ${escapeHtml(decodeApiText(voo.numeroVoo || ''))}</strong></p>
-    <p>${escapeHtml(decodeApiText(voo.origem))} ${escapeHtml(formatTimeShort(voo.partida))} → ${escapeHtml(decodeApiText(voo.destino))} ${escapeHtml(formatTimeShort(voo.chegada))}</p>
+    <p>${escapeHtml(decodeApiText(voo.origem))} ${escapeHtml(formatTimeDisplay(voo.partida))} → ${escapeHtml(decodeApiText(voo.destino))} ${escapeHtml(formatTimeDisplay(voo.chegada))}</p>
     <p class="te-selection-block__price">${formatEuro(voo.precoTotal)}</p>
   `;
 }
@@ -1386,10 +1553,15 @@ function renderFinalPackage(container) {
       </article>`;
   }
 
+  const staffMode = isStaffOfferMode(container.__form);
+  const saveLabel = staffMode ? 'Publicar oferta' : getClientSaveLabel(container.__form);
+  const totalSelecionado = computeSelectionTotal();
+
+  const finalWrapClass = staffMode ? 'te-summary-card te-package-card te-package-card--final' : 'te-package-card te-package-card--final';
   target.innerHTML = `
-    <article class="te-package-card te-package-card--final">
+    <article class="${finalWrapClass}">
       <div class="te-package-card__hero te-package-card__hero--large" style="${gradientStyle}">
-        <span class="te-package-card__label">Plano de viagem personalizado</span>
+        <span class="te-package-card__label">${staffMode ? 'Oferta pública' : 'Plano de viagem personalizado'}</span>
         <h3>${escapeHtml(decodeApiText(sugestao.titulo || 'A sua viagem'))}</h3>
         <div class="te-package-card__chips">
           <span class="te-chip">${escapeHtml(meta.routeLabel || '')}</span>
@@ -1400,9 +1572,9 @@ function renderFinalPackage(container) {
       <div class="te-package-card__body te-package-card__body--final">
         <p class="te-package-card__desc">${escapeHtml(resumo)}</p>
         <div class="te-package-card__price te-package-card__price--highlight">
-          <span>Preço estimado do pacote</span>
-          <strong>${formatEuro(sugestao.precoEstimadoTotal)}</strong>
-          <small>Valores indicativos; confirmação final na fase de reservas</small>
+          <span>Total com componentes selecionados</span>
+          <strong>${formatEuro(totalSelecionado)}</strong>
+          <small>Soma de voos, alojamento e transporte escolhidos</small>
         </div>
         ${activitiesHtml}
         ${transportText ? `<div class="te-package-card__transport"><h4>Transporte sugerido</h4><p>${escapeHtml(transportText)}</p></div>` : ''}
@@ -1418,7 +1590,7 @@ function renderFinalPackage(container) {
           ${hotelCard}
         </div>
         <div class="te-package-card__actions">
-          <button type="button" class="btn btn-primary" id="save-trip-btn">Guardar viagem</button>
+          <button type="button" class="btn btn-primary" id="save-trip-btn">${escapeHtml(saveLabel)}</button>
         </div>
       </div>
     </article>
@@ -1429,9 +1601,32 @@ function renderFinalPackage(container) {
   });
 }
 
+function computeSelectionTotal() {
+  let sum = 0;
+  if (tripSelection.flightIda) sum += Number(tripSelection.flightIda.precoTotal) || 0;
+  if (tripSelection.flightRegresso) sum += Number(tripSelection.flightRegresso.precoTotal) || 0;
+  if (tripSelection.hotel) sum += Number(tripSelection.hotel.precoEstimado) || 0;
+  const transporte = tripSelection.sugestao?.transporte;
+  if (transporte && Number(transporte.precoEstimado) > 0) {
+    sum += Number(transporte.precoEstimado);
+  }
+  return sum;
+}
+
 function buildGuardarPayload(container) {
   const meta = container.__meta;
-  if (!meta || !tripSelection.flightIda || !tripSelection.flightRegresso || !tripSelection.sugestao) {
+  const form = container.__form;
+  if (!meta || !tripSelection.flightIda || !tripSelection.flightRegresso) {
+    return null;
+  }
+  let sugestao = tripSelection.sugestao;
+  if (!sugestao) {
+    sugestao = buildMinimalOfferSugestao(meta, form);
+  }
+  if (!sugestao) {
+    return null;
+  }
+  if (!isStaffOfferMode(form) && form?.dataset.clienteLoggedIn !== 'true') {
     return null;
   }
   const payload = {
@@ -1443,7 +1638,7 @@ function buildGuardarPayload(container) {
     criancas: meta.criancas,
     vooIdaSelecionado: tripSelection.flightIda,
     vooRegressoSelecionado: tripSelection.flightRegresso,
-    sugestao: tripSelection.sugestao,
+    sugestao,
   };
   if (tripSelection.hotel) {
     payload.hotelSelecionado = tripSelection.hotel;
@@ -1455,14 +1650,21 @@ function resetSaveTripModal(container) {
   const body = container.querySelector('#save-trip-modal-body');
   const actions = container.querySelector('#save-trip-modal-actions');
   const confirmBtn = container.querySelector('#save-trip-modal-confirm');
+  const staffMode = isStaffOfferMode(container.__form);
+  const title = container.querySelector('#save-trip-modal-title');
+  if (title) {
+    title.textContent = staffMode ? 'Publicar oferta' : getClientSaveLabel(container.__form);
+  }
   if (body) {
-    body.innerHTML = '<p>A tua viagem será guardada como reserva na área de cliente.</p>';
+    body.innerHTML = staffMode
+      ? '<p>Confirma a publicação desta oferta na área pública. Não será criada nenhuma reserva de cliente.</p>'
+      : '<p>A tua viagem será guardada como reserva na área de cliente.</p>';
   }
   if (actions) actions.hidden = false;
   if (confirmBtn) {
     confirmBtn.hidden = false;
     confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Guardar';
+    confirmBtn.textContent = staffMode ? 'Publicar' : 'Guardar';
   }
 }
 
@@ -1489,12 +1691,32 @@ function setSaveTripModalState(container, html, options = {}) {
 async function guardarViagem(container) {
   const form = container.__form;
   const url = form?.dataset.guardarUrl;
+  if (isStaffOfferMode(form) && url && /\/guardar-viagem\/?$/.test(url)) {
+    setSaveTripModalState(
+      container,
+      '<p>Apenas clientes podem criar reservas.</p>',
+      { hideActions: true, hideConfirm: true },
+    );
+    return;
+  }
   const payload = buildGuardarPayload(container);
   const saveBtn = container.querySelector('#save-trip-btn');
   const confirmBtn = container.querySelector('#save-trip-modal-confirm');
 
   if (!url || !payload) {
-    setSaveTripModalState(container, '<p class="te-empty">Não foi possível preparar os dados da viagem.</p>', { hideActions: true });
+    const hint = isStaffOfferMode(form)
+      ? 'Seleciona os voos de ida e regresso (e opcionalmente alojamento) antes de publicar.'
+      : 'Não foi possível preparar os dados da viagem.';
+    setSaveTripModalState(container, `<p class="te-empty">${escapeHtml(hint)}</p>`, { hideActions: true, hideConfirm: true });
+    return;
+  }
+
+  if (!isStaffOfferMode(form) && form?.dataset.clienteLoggedIn !== 'true') {
+    setSaveTripModalState(
+      container,
+      '<p>As reservas de cliente só podem ser guardadas com sessão de cliente.</p>',
+      { hideActions: true, hideConfirm: true },
+    );
     return;
   }
 
@@ -1506,7 +1728,8 @@ async function guardarViagem(container) {
     confirmBtn.disabled = true;
     confirmBtn.textContent = 'A guardar…';
   }
-  setSaveTripModalState(container, '<p>A guardar a tua reserva…</p>', { disableConfirm: true });
+  const savingMsg = isStaffOfferMode(form) ? 'A publicar a oferta…' : 'A guardar a tua reserva…';
+  setSaveTripModalState(container, `<p>${escapeHtml(savingMsg)}</p>`, { disableConfirm: true });
 
   try {
     const response = await fetch(url, {
@@ -1516,6 +1739,15 @@ async function guardarViagem(container) {
       body: JSON.stringify(payload),
     });
     const data = await response.json();
+
+    if (data?.permissionDenied) {
+      setSaveTripModalState(
+        container,
+        `<p class="te-modal__error">${escapeHtml(data.message || 'Não tens permissão para criar ofertas.')}</p>`,
+        { hideActions: true, hideConfirm: true },
+      );
+      return;
+    }
 
     if (data?.authRequired) {
       const loginUrl = form?.dataset.loginUrl || '';
@@ -1539,18 +1771,35 @@ async function guardarViagem(container) {
       return;
     }
 
-    const basePath = url.replace(/\/guardar-viagem\/?$/, '');
-    const dashboardUrl = `${basePath}/index.jsp?page=customer-dashboard`;
+    const basePath = url.replace(/\/guardar-(viagem|oferta)\/?$/, '');
+    const staffMode = isStaffOfferMode(form);
+    const successUrl = staffMode && window.TE_STAFF_OFFER_SUCCESS_URL
+      ? window.TE_STAFF_OFFER_SUCCESS_URL
+      : `${basePath}/index.jsp?page=customer-dashboard`;
+    if (staffMode && window.TE_STAFF_OFFER_SUCCESS_URL) {
+      window.location.assign(window.TE_STAFF_OFFER_SUCCESS_URL);
+      return;
+    }
+    if (!staffMode && data?.ok) {
+      const basePath = url.replace(/\/guardar-(viagem|oferta)\/?$/, '');
+      window.location.assign(`${basePath}/index.jsp?page=my-reservations&success=created`);
+      return;
+    }
+    const successTitle = staffMode ? 'Oferta criada' : 'Reserva guardada';
+    const successCta = staffMode ? 'Ver ofertas' : 'Ver área de cliente';
     setSaveTripModalState(
       container,
-      `<h4>Reserva guardada</h4><p>${escapeHtml(data.message || 'A tua viagem foi guardada na área de cliente.')}</p><p><a class="btn btn-primary" href="${escapeHtml(dashboardUrl)}">Ver área de cliente</a></p>`,
+      `<h4>${escapeHtml(successTitle)}</h4><p>${escapeHtml(data.message || '')}</p><p><a class="btn btn-primary" href="${escapeHtml(successUrl)}">${escapeHtml(successCta)}</a></p>`,
       { hideActions: true, hideConfirm: true },
     );
-    if (saveBtn) saveBtn.textContent = 'Reserva guardada';
+    if (saveBtn) saveBtn.textContent = staffMode ? 'Oferta guardada' : 'Reserva guardada';
   } catch (err) {
+    const failMsg = isStaffOfferMode(form)
+      ? 'Não foi possível publicar a oferta. Verifica a ligação e tenta novamente.'
+      : 'Não foi possível guardar a viagem. Tenta novamente.';
     setSaveTripModalState(
       container,
-      '<p>Não foi possível guardar a viagem. Tenta novamente.</p>',
+      `<p>${escapeHtml(failMsg)}</p>`,
       { hideActions: true, hideConfirm: true },
     );
   } finally {
@@ -1560,7 +1809,7 @@ async function guardarViagem(container) {
     }
     if (saveBtn && saveBtn.textContent === 'A guardar…') {
       saveBtn.disabled = false;
-      saveBtn.textContent = 'Guardar viagem';
+      saveBtn.textContent = isStaffOfferMode(form) ? 'Publicar oferta' : getClientSaveLabel(form);
     }
   }
 }
@@ -1643,14 +1892,37 @@ function formatDateTime(value) {
 }
 
 function formatTimeShort(value) {
-  if (!value) return '—';
+  if (!value) return '';
   const normalized = String(value).replace(' ', 'T');
   const date = new Date(normalized);
+  let out = '';
   if (Number.isNaN(date.getTime())) {
     const parts = String(value).split(' ');
-    return parts.length > 1 ? parts[1].slice(0, 5) : value;
+    out = parts.length > 1 ? parts[1].slice(0, 5) : String(value).trim();
+  } else {
+    out = new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit' }).format(date);
   }
-  return new Intl.DateTimeFormat('pt-PT', { hour: '2-digit', minute: '2-digit' }).format(date);
+  if (!out || out === '00:00' || out === '24:00') return '';
+  return out;
+}
+
+function formatTimeDisplay(value) {
+  const t = formatTimeShort(value);
+  return t || 'Horário não disponível';
+}
+
+function formatDateTimeDisplay(value) {
+  if (!value) return 'Horário não disponível';
+  const normalized = String(value).replace(' ', 'T');
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return decodeApiText(value) || 'Horário não disponível';
+  const formatted = new Intl.DateTimeFormat('pt-PT', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  }).format(date);
+  if (formatted.includes('00:00') && !String(value).match(/[1-9]\d*:\d{2}/)) {
+    return 'Horário não disponível';
+  }
+  return formatted;
 }
 
 function getCurrentPageParam() {

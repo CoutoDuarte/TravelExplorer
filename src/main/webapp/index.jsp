@@ -61,6 +61,10 @@ if ("offers".equals(pageParam)) {
     contentPage = "/pages/staff/offers.jsp";
     layoutPage = "/layouts/staff_layout.jsp";
     staffPermissionRequired = "STAFF_OFFERS";
+} else if ("staff-offer-wizard".equals(pageParam)) {
+    contentPage = "/pages/staff/staff_offer_wizard.jsp";
+    layoutPage = "/layouts/staff_layout.jsp";
+    staffPermissionRequired = "STAFF_OFFERS";
 } else if ("staff-promotions".equals(pageParam)) {
     contentPage = "/pages/staff/promotions.jsp";
     layoutPage = "/layouts/staff_layout.jsp";

@@ -18,7 +18,7 @@
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-clients" href="${pageContext.request.contextPath}/index.jsp?page=staff-clients">Clientes</a>
             <% } %>
             <% if (StaffAuth.hasPermission(request, "STAFF_OFFERS")) { %>
-            <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-offers" href="${pageContext.request.contextPath}/index.jsp?page=staff-offers">Ofertas e pacotes</a>
+            <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-offers" href="${pageContext.request.contextPath}/index.jsp?page=staff-offers">Gestão de ofertas</a>
             <% } %>
             <% if (StaffAuth.hasPermission(request, "STAFF_PROMOTIONS")) { %>
             <a class="btn btn-ghost staff-sidebar__link" data-staff-page="staff-promotions" href="${pageContext.request.contextPath}/index.jsp?page=staff-promotions">Promoções</a>

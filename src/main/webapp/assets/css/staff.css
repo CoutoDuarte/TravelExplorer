@@ -173,6 +173,159 @@
   padding: 2rem 1rem;
 }
 
+.staff-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.staff-tabs__item {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 56, 67, 0.15);
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.staff-tabs__item.is-active {
+  background: var(--color-primary, #223843);
+  color: #fff;
+  border-color: transparent;
+}
+
+.staff-offer-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.staff-offer-card {
+  border: 1px solid rgba(34, 56, 67, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.staff-offer-card__media {
+  height: 140px;
+  background-color: #e8eef2;
+  overflow: hidden;
+}
+
+.staff-offer-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.staff-offer-card__body {
+  padding: 1rem;
+}
+
+.staff-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.staff-promo-preview {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: rgba(34, 56, 67, 0.05);
+  margin: 0.5rem 0;
+}
+
+.staff-promo-preview__final {
+  color: #0f6b4c;
+  font-weight: 600;
+}
+
+.staff-offer-wizard-page .staff-offer-wizard__panel {
+  padding: 1.25rem;
+}
+
+.staff-offer-wizard-page .te-booking-panel,
+.staff-offer-wizard-page .te-wizard,
+.staff-offer-wizard-page .te-wizard-step,
+.staff-offer-wizard-page .te-flight-row,
+.staff-offer-wizard-page .te-hotel-card,
+.staff-offer-wizard-page .te-package-card {
+  box-sizing: border-box;
+}
+
+.staff-offer-wizard-page .te-wizard-card {
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(34, 56, 67, 0.08);
+  box-shadow: 0 10px 28px rgba(34, 56, 67, 0.06);
+}
+
+.staff-offer-wizard-page .te-flight-card {
+  border-radius: 18px;
+  border: 1px solid rgba(34, 56, 67, 0.08);
+  background: #fff;
+  overflow: visible;
+}
+
+.staff-offer-wizard-page .te-hotels__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.staff-offer-wizard-page .te-wizard-review.te-summary-card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.staff-offer-wizard-page .te-modal__dialog {
+  border-radius: 20px;
+  padding: 1.35rem 1.5rem;
+  background: #fff;
+  border: 1px solid rgba(34, 56, 67, 0.08);
+  box-shadow: 0 18px 48px rgba(34, 56, 67, 0.14);
+}
+
+.staff-offer-wizard-page .te-modal__error {
+  margin: 0;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.staff-offer-wizard-page .te-package-card--final {
+  margin-top: 0.25rem;
+}
+
+.public-page--destinations .public-page__section--wizard .te-booking-panel--active {
+  margin-top: 1rem;
+}
+
+.public-page--destinations .public-page__section--wizard .te-wizard-card {
+  padding: 1.15rem 1.25rem;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid rgba(34, 56, 67, 0.08);
+  box-shadow: 0 10px 28px rgba(34, 56, 67, 0.06);
+}
+
+.staff-offer-wizard-page .te-modal {
+  z-index: 10060;
+}
+
+.staff-offer-wizard-page .te-modal__backdrop {
+  z-index: 0;
+}
+
+.staff-offer-wizard-page .te-modal__dialog {
+  position: relative;
+  z-index: 1;
+}
+
 .staff-drawer-backdrop {
   position: fixed;
   inset: 0;

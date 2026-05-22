@@ -1,11 +1,17 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ page import="java.text.NumberFormat" %>
-<%@ page import="java.time.LocalDateTime" %>
-<%@ page import="java.time.format.DateTimeFormatter" %>
+<%@ page import="java.text.DecimalFormat" %>
+<%@ page import="java.text.DecimalFormatSymbols" %>
 <%@ page import="java.util.List" %>
 <%@ page import="java.util.Locale" %>
 <%@ page import="Connection.Classes.ClienteOfertaGuardada" %>
+<%@ page import="Connection.Classes.Pacote" %>
+<%@ page import="Connection.Classes.Promocao" %>
+<%@ page import="Connection.Classes.Viagens" %>
 <%@ page import="Connection.CRUD.ClienteOfertaGuardadaCRUD" %>
+<%@ page import="Connection.CRUD.PacoteCRUD" %>
+<%@ page import="Connection.CRUD.PromocaoCRUD" %>
+<%@ page import="Connection.CRUD.ViagemCRUD" %>
 <%!
 private String escapeHtml(String value) {
     if (value == null) {
@@ -14,33 +20,9 @@ private String escapeHtml(String value) {
     return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
 }
 
-private String safeValue(String value) {
-    return value != null ? value : "";
-}
-
-private boolean hasText(String value) {
-    return value != null && !value.trim().isEmpty();
-}
-
-private String formatDate(String value, DateTimeFormatter formatter) {
-    if (!hasText(value)) {
-        return "";
-    }
-    try {
-        return LocalDateTime.parse(value).format(formatter);
-    } catch (Exception e) {
-        return value;
-    }
-}
-
-private String formatDates(String start, String end, DateTimeFormatter formatter) {
-    if (!hasText(start) && !hasText(end)) {
-        return "";
-    }
-    if (hasText(start) && hasText(end)) {
-        return formatDate(start, formatter) + " - " + formatDate(end, formatter);
-    }
-    return hasText(start) ? formatDate(start, formatter) : formatDate(end, formatter);
+private String jspParamSafe(String value) {
+    if (value == null) return "";
+    return value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
 }
 %>
 <%
@@ -64,10 +46,15 @@ if (idCliente == null) {
 
 String technicalError = null;
 Locale ptLocale = new Locale("pt", "PT");
-NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(ptLocale);
-DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", ptLocale);
-DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm", ptLocale);
 List<ClienteOfertaGuardada> savedOffers = new java.util.ArrayList<ClienteOfertaGuardada>();
+PacoteCRUD pacoteCRUD = new PacoteCRUD();
+ViagemCRUD viagemCRUD = new ViagemCRUD();
+PromocaoCRUD promocaoCRUD = new PromocaoCRUD();
+String savedCtx = request.getContextPath();
+DecimalFormatSymbols symSaved = new DecimalFormatSymbols(ptLocale);
+symSaved.setDecimalSeparator(',');
+symSaved.setGroupingSeparator(' ');
+DecimalFormat dfSaved = new DecimalFormat("#,##0.00", symSaved);
 
 try {
     savedOffers = ClienteOfertaGuardadaCRUD.listarPorCliente(idCliente);
@@ -76,27 +63,10 @@ try {
 }
 
 String errorParam = request.getParameter("error");
-if (technicalError == null && hasText(errorParam)) {
+if (technicalError == null && errorParam != null && !errorParam.trim().isEmpty()) {
     technicalError = "Erro técnico: " + errorParam;
 }
 %>
-<style>
-    .saved-offers-grid {
-        align-items: start;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .saved-offers-grid .card {
-        height: auto;
-        align-self: start;
-    }
-
-    @media (max-width: 900px) {
-        .saved-offers-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 
 <div class="flow customer-shell">
     <jsp:include page="/components/shared/page_header.jsp">
@@ -105,7 +75,7 @@ if (technicalError == null && hasText(errorParam)) {
         <jsp:param name="description" value="Consulta rapidamente as ofertas que guardaste para comparar ou rever mais tarde." />
     </jsp:include>
 
-    <div class="customer-dashboard-grid saved-offers-grid">
+    <div class="cards-grid public-cards-grid">
         <% if (technicalError != null) { %>
             <div class="surface-block">
                 <p class="text-muted"><%= escapeHtml(technicalError) %></p>
@@ -113,74 +83,65 @@ if (technicalError == null && hasText(errorParam)) {
         <% } else if (savedOffers.isEmpty()) { %>
             <div class="surface-block">
                 <p class="text-muted">Ainda não tens ofertas guardadas.</p>
+                <a class="btn btn-primary" href="<%= savedCtx %>/index.jsp#hero-studio" style="margin-top: 1rem;">Planear viagem</a>
             </div>
         <% } else { %>
             <% for (ClienteOfertaGuardada offer : savedOffers) {
-                int travelers = offer.getNumeroPessoasAdultas() + offer.getNumeroCriancas();
-                String travelersText = travelers + (travelers == 1 ? " viajante" : " viajantes");
-                String datesText = formatDates(offer.getDataPartida(), offer.getDataRegresso(), dateFormatter);
-                String savedDateText = formatDate(offer.getDataGuardado(), dateTimeFormatter);
-                String priceText = currencyFormat.format(offer.getPrecoBase()).replace("€", "EUR");
+                Pacote op = null;
+                try {
+                    op = pacoteCRUD.findById(offer.getIdPacote());
+                } catch (Exception ignored) {}
+                if (op == null || !Connection.PacotePublicHelper.isPubliclyVisible(op)) continue;
+                List<Viagens> vList = viagemCRUD.findByPacote(op.getIdPacote());
+                String titulo = op.getNome() != null ? op.getNome() : (offer.getNomePacote() != null ? offer.getNomePacote() : "Oferta");
+                String routeLine = Connection.PacotePublicHelper.routeFromViagens(vList);
+                if (routeLine.isEmpty() && offer.getOrigem() != null && offer.getDestino() != null) {
+                    routeLine = offer.getOrigem().trim() + " → " + offer.getDestino().trim();
+                }
+                String datesLine = Connection.PacotePublicHelper.datesFromViagens(vList);
+                String metaLine = Connection.PacotePublicHelper.passengersLabel(op);
+                Promocao promo = promocaoCRUD.findActiveByPacote(op.getIdPacote());
+                Connection.PacotePublicHelper.PromoPrice pp = Connection.PacotePublicHelper.priceForPacote(op, promo);
+                String precoTxt = Connection.PacotePublicHelper.formatPrecoCard(pp, dfSaved);
+                String precoOrigTxt = Connection.PacotePublicHelper.formatPrecoOriginalRiscado(pp, dfSaved);
+                String badgeTxt = Connection.PacotePublicHelper.promoBadge(pp);
+                String imgSrc = Connection.PacotePublicHelper.resolveImageSrc(op, savedCtx);
+                String safeImagem = jspParamSafe(imgSrc != null ? imgSrc : "");
+                String gradientOnly = imgSrc == null ? "true" : "false";
+                String safeTitulo = jspParamSafe(titulo);
+                String safeRoute = jspParamSafe(routeLine);
+                String safeMeta = jspParamSafe(metaLine);
+                String safeDates = jspParamSafe(datesLine);
+                String safePreco = jspParamSafe(precoTxt);
+                String safePrecoOrig = jspParamSafe(precoOrigTxt);
+                String safeBadge = jspParamSafe(badgeTxt);
+                String safeSeed = String.valueOf(Connection.PacotePublicHelper.gradientSeed(op.getIdPacote()));
+                String safeIdPacote = String.valueOf(op.getIdPacote());
             %>
-                <article class="card">
-                    <div class="card__media">
-                        <img src="${pageContext.request.contextPath}/assets/img/offers/offer-1.jpg" alt="<%= escapeHtml(safeValue(offer.getNomePacote())) %>">
-                    </div>
-
-                    <div class="card__body">
-                        <div class="card__meta">
-                            <% if (hasText(offer.getDestino())) { %>
-                                <span class="card__tag"><%= escapeHtml(offer.getDestino()) %></span>
-                            <% } %>
-                            <span class="card__tag"><%= escapeHtml(travelersText) %></span>
-                        </div>
-
-                        <h3 class="card__title"><%= escapeHtml(hasText(offer.getNomePacote()) ? offer.getNomePacote() : "Oferta sem nome") %></h3>
-
-                        <div class="offer-card__meta-line">
-                            <% if (hasText(offer.getOrigem())) { %>
-                                <span>Origem: <%= escapeHtml(offer.getOrigem()) %></span>
-                            <% } %>
-                            <% if (hasText(offer.getDestino())) { %>
-                                <span>Destino: <%= escapeHtml(offer.getDestino()) %></span>
-                            <% } %>
-                            <% if (hasText(offer.getTipoEstadia())) { %>
-                                <span><%= escapeHtml(offer.getTipoEstadia()) %></span>
-                            <% } %>
-                        </div>
-
-                        <p class="offer-card__description">
-                            <%= escapeHtml(safeValue(offer.getDescricaoPacote())) %>
-                        </p>
-
-                        <div class="flow" style="gap: 0.55rem;">
-                            <% if (hasText(datesText)) { %>
-                                <p class="text-muted"><strong>Datas:</strong> <%= escapeHtml(datesText) %></p>
-                            <% } %>
-                            <p class="text-muted"><strong>Viajantes:</strong> <%= escapeHtml(travelersText) %></p>
-                            <% if (hasText(savedDateText)) { %>
-                                <p class="text-muted"><strong>Guardado em:</strong> <%= escapeHtml(savedDateText) %></p>
-                            <% } %>
-                        </div>
-
-                        <div class="card__footer">
-                            <span class="card__price"><%= escapeHtml(priceText) %></span>
-                            <div class="actions-row">
-                                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=offer-details&idPacote=<%= offer.getIdPacote() %>">
-                                    Ver oferta
-                                </a>
-                                <form action="${pageContext.request.contextPath}/ClienteOfertaGuardadaServlet" method="post">
-                                    <input type="hidden" name="action" value="remove">
-                                    <input type="hidden" name="idPacote" value="<%= offer.getIdPacote() %>">
-                                    <button class="btn btn-secondary" type="submit">Remover dos guardados</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </article>
+            <div class="saved-offer-card-wrap">
+                <jsp:include page="/components/public/public_offer_card.jsp">
+                    <jsp:param name="imagemUrl" value="<%= safeImagem %>" />
+                    <jsp:param name="gradientOnly" value="<%= gradientOnly %>" />
+                    <jsp:param name="alt" value="<%= safeTitulo %>" />
+                    <jsp:param name="tag1" value="Guardada" />
+                    <jsp:param name="title" value="<%= safeTitulo %>" />
+                    <jsp:param name="routeLine" value="<%= safeRoute %>" />
+                    <jsp:param name="metaLine" value="<%= safeMeta %>" />
+                    <jsp:param name="datesLine" value="<%= safeDates %>" />
+                    <jsp:param name="price" value="<%= safePreco %>" />
+                    <jsp:param name="priceOriginal" value="<%= safePrecoOrig %>" />
+                    <jsp:param name="promoBadge" value="<%= safeBadge %>" />
+                    <jsp:param name="idPacote" value="<%= safeIdPacote %>" />
+                    <jsp:param name="gradientSeed" value="<%= safeSeed %>" />
+                    <jsp:param name="redirectPage" value="saved-offers" />
+                </jsp:include>
+                <form class="saved-offer-card-wrap__remove" action="<%= savedCtx %>/ClienteOfertaGuardadaServlet" method="post">
+                    <input type="hidden" name="action" value="remove">
+                    <input type="hidden" name="idPacote" value="<%= op.getIdPacote() %>">
+                    <button class="btn btn-ghost" type="submit">Remover dos guardados</button>
+                </form>
+            </div>
             <% } %>
         <% } %>
     </div>
-
-    
 </div>

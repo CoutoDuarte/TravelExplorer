@@ -28,12 +28,12 @@ public class GuardarViagemCRUD {
         Connection conn = DBConnection.getConnection();
         conn.setAutoCommit(false);
         try {
-            float total = computeTotal(sugestao, pedido);
+            float total = computeTotalFromSelection(pedido, sugestao);
             int idReserva = nextId(conn, "RESERVA", "idReserva");
             int idPacote = nextId(conn, "PACOTE", "idPacote");
 
             insertReserva(conn, idReserva, idCliente, pedido, sugestao, total);
-            insertPacote(conn, idPacote, idReserva, pedido, sugestao);
+            insertPacote(conn, idPacote, idReserva, pedido, sugestao, total);
             updateReservaPacote(conn, idReserva, idPacote);
 
             saveFlightLeg(conn, idPacote, pedido, pedido.vooIdaSelecionado, pedido.dataPartida, "Ida");
@@ -49,7 +49,7 @@ public class GuardarViagemCRUD {
                 int idTransporte = nextId(conn, "TRANSPORTE", "idTransporte");
                 insertTransporteStructured(conn, idTransporte, pedido, sugestao.transporte);
                 linkPacoteTransporte(conn, idPacote, idTransporte);
-            } else if (sugestao != null && notBlank(sugestao.transporteSugerido)) {
+            } else if (sugestao != null && notBlank(sugestao.transporteSugerido) && hasTransportContent(sugestao.transporteSugerido)) {
                 int idTransporte = nextId(conn, "TRANSPORTE", "idTransporte");
                 insertTransporte(conn, idTransporte, pedido, sugestao.transporteSugerido);
                 linkPacoteTransporte(conn, idPacote, idTransporte);
@@ -72,21 +72,99 @@ public class GuardarViagemCRUD {
         }
     }
 
-    private float computeTotal(SugestaoViagem sugestao, CriarSugestaoRequest pedido) {
-        if (sugestao != null && sugestao.precoEstimadoTotal > 0) {
-            return (float) sugestao.precoEstimadoTotal;
+    public int guardarOferta(CriarSugestaoRequest pedido, SugestaoViagem sugestao) throws SQLException {
+        Connection conn = DBConnection.getConnection();
+        conn.setAutoCommit(false);
+        try {
+            float total = computeTotalFromSelection(pedido, sugestao);
+            int idPacote = nextId(conn, "PACOTE", "idPacote");
+
+            insertPacoteOferta(conn, idPacote, pedido, sugestao, total);
+            saveFlightLeg(conn, idPacote, pedido, pedido.vooIdaSelecionado, pedido.dataPartida, "Ida");
+            saveFlightLeg(conn, idPacote, pedido, pedido.vooRegressoSelecionado, pedido.dataRegresso, "Regresso");
+
+            if (pedido.hotelSelecionado != null && notBlank(pedido.hotelSelecionado.nome)) {
+                int idAlojamento = nextId(conn, "ALOJAMENTO", "idAlojamento");
+                insertAlojamento(conn, idAlojamento, pedido, pedido.hotelSelecionado);
+                linkPacoteAlojamento(conn, idPacote, idAlojamento);
+            }
+
+            if (sugestao != null && sugestao.transporte != null && notBlank(sugestao.transporte.tipo)) {
+                int idTransporte = nextId(conn, "TRANSPORTE", "idTransporte");
+                insertTransporteStructured(conn, idTransporte, pedido, sugestao.transporte);
+                linkPacoteTransporte(conn, idPacote, idTransporte);
+            } else if (sugestao != null && notBlank(sugestao.transporteSugerido) && hasTransportContent(sugestao.transporteSugerido)) {
+                int idTransporte = nextId(conn, "TRANSPORTE", "idTransporte");
+                insertTransporte(conn, idTransporte, pedido, sugestao.transporteSugerido);
+                linkPacoteTransporte(conn, idPacote, idTransporte);
+            }
+
+            conn.commit();
+            return idPacote;
+        } catch (SQLException e) {
+            conn.rollback();
+            throw e;
+        } finally {
+            try {
+                conn.setAutoCommit(true);
+            } catch (SQLException ignored) {
+            }
+            conn.close();
         }
+    }
+
+    private float computeTotalFromSelection(CriarSugestaoRequest pedido, SugestaoViagem sugestao) {
         float sum = 0;
-        if (pedido.vooIdaSelecionado != null) {
+        if (pedido != null && pedido.vooIdaSelecionado != null) {
             sum += (float) pedido.vooIdaSelecionado.precoTotal;
         }
-        if (pedido.vooRegressoSelecionado != null) {
+        if (pedido != null && pedido.vooRegressoSelecionado != null) {
             sum += (float) pedido.vooRegressoSelecionado.precoTotal;
         }
-        if (pedido.hotelSelecionado != null) {
+        if (pedido != null && pedido.hotelSelecionado != null && notBlank(pedido.hotelSelecionado.nome)) {
             sum += (float) pedido.hotelSelecionado.precoEstimado;
         }
-        return sum > 0 ? sum : 0;
+        if (sugestao != null && sugestao.transporte != null && sugestao.transporte.precoEstimado > 0) {
+            sum += (float) sugestao.transporte.precoEstimado;
+        }
+        return Math.max(0, sum);
+    }
+
+    private void insertPacoteOferta(Connection conn, int idPacote, CriarSugestaoRequest pedido, SugestaoViagem sugestao, float preco) throws SQLException {
+        String nome = sugestao != null && notBlank(sugestao.titulo) ? sugestao.titulo.trim() : buildTitulo(pedido, sugestao);
+        String descricao = buildPacoteDescricao(pedido, sugestao);
+        int adultos = pedido.adultos > 0 ? pedido.adultos : 1;
+        int criancas = Math.max(0, pedido.criancas);
+        String imagemUrl = resolvePacoteImagemUrl(pedido);
+
+        String sql = "INSERT INTO PACOTE (idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva, tipo, imagem_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, idPacote);
+            stmt.setString(2, descricao);
+            stmt.setString(3, nome);
+            stmt.setFloat(4, preco);
+            stmt.setInt(5, adultos);
+            stmt.setInt(6, criancas);
+            stmt.setNull(7, Types.INTEGER);
+            stmt.setString(8, "Oferta");
+            if (imagemUrl != null) {
+                stmt.setString(9, imagemUrl);
+            } else {
+                stmt.setNull(9, Types.VARCHAR);
+            }
+            stmt.executeUpdate();
+        }
+    }
+
+    private String resolvePacoteImagemUrl(CriarSugestaoRequest pedido) {
+        if (pedido == null || pedido.hotelSelecionado == null || pedido.hotelSelecionado.imagemUrl == null) {
+            return null;
+        }
+        String url = pedido.hotelSelecionado.imagemUrl.trim();
+        if (url.isEmpty() || !url.startsWith("http")) {
+            return null;
+        }
+        return url.length() > 255 ? url.substring(0, 255) : url;
     }
 
     private void insertReserva(Connection conn, int idReserva, int idCliente, CriarSugestaoRequest pedido, SugestaoViagem sugestao, float total) throws SQLException {
@@ -145,13 +223,13 @@ public class GuardarViagemCRUD {
         }
     }
 
-    private void insertPacote(Connection conn, int idPacote, int idReserva, CriarSugestaoRequest pedido, SugestaoViagem sugestao) throws SQLException {
+    private void insertPacote(Connection conn, int idPacote, int idReserva, CriarSugestaoRequest pedido, SugestaoViagem sugestao, float preco) throws SQLException {
         String nome = sugestao != null && notBlank(sugestao.titulo) ? sugestao.titulo.trim() : "Viagem " + safe(pedido.destino);
         String descricao = buildPacoteDescricao(pedido, sugestao);
-        float preco = computeTotal(sugestao, pedido);
         int adultos = pedido.adultos > 0 ? pedido.adultos : 1;
         int criancas = Math.max(0, pedido.criancas);
 
+        String imagemUrl = resolvePacoteImagemUrl(pedido);
         String sql = "INSERT INTO PACOTE (idPacote, descricao, nome, preco_base, numero_pessoas_adultas, numero_criancas, idReserva, tipo, imagem_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, idPacote);
@@ -162,7 +240,11 @@ public class GuardarViagemCRUD {
             stmt.setInt(6, criancas);
             stmt.setInt(7, idReserva);
             stmt.setString(8, "Reserva");
-            stmt.setNull(9, Types.VARCHAR);
+            if (imagemUrl != null) {
+                stmt.setString(9, imagemUrl);
+            } else {
+                stmt.setNull(9, Types.VARCHAR);
+            }
             stmt.executeUpdate();
         }
     }
@@ -415,6 +497,9 @@ public class GuardarViagemCRUD {
     }
 
     private void linkPacoteViagem(Connection conn, int idPacote, int idViagem) throws SQLException {
+        if (idPacote <= 0 || idViagem <= 0) {
+            return;
+        }
         String sql = "INSERT IGNORE INTO PACOTE_VIAGENS (idPacote, idViagem) VALUES (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, idPacote);
@@ -424,6 +509,9 @@ public class GuardarViagemCRUD {
     }
 
     private void linkPacoteAlojamento(Connection conn, int idPacote, int idAlojamento) throws SQLException {
+        if (idPacote <= 0 || idAlojamento <= 0) {
+            return;
+        }
         String sql = "INSERT IGNORE INTO PACOTE_ALOJAMENTO (idPacote, idAlojamento) VALUES (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, idPacote);
@@ -433,6 +521,9 @@ public class GuardarViagemCRUD {
     }
 
     private void linkPacoteTransporte(Connection conn, int idPacote, int idTransporte) throws SQLException {
+        if (idPacote <= 0 || idTransporte <= 0) {
+            return;
+        }
         String sql = "INSERT IGNORE INTO PACOTE_TRANSPORTE (idPacote, idTransporte) VALUES (?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, idPacote);
@@ -485,6 +576,14 @@ public class GuardarViagemCRUD {
         } catch (DateTimeParseException ignored) {
             return null;
         }
+    }
+
+    private static boolean hasTransportContent(String text) {
+        if (!notBlank(text)) {
+            return false;
+        }
+        String lower = text.trim().toLowerCase();
+        return !lower.equals("n/a") && !lower.equals("na") && !lower.equals("-") && !lower.equals("sem transporte");
     }
 
     private static boolean notBlank(String value) {

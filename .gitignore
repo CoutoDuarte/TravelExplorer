@@ -1,7 +1,7 @@
-build/*
-!build/.gitignore
+build/
 bin/
 *.class
+node_modules/
 .DS_Store
 
 .env

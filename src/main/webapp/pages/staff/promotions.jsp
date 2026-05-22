@@ -11,7 +11,14 @@ private static String escAttr(String s) {
 PromocaoCRUD promocaoCRUD = new PromocaoCRUD();
 PacoteCRUD pacoteCRUD = new PacoteCRUD();
 List<Promocao> promocoes = promocaoCRUD.findAll();
-List<Pacote> pacotes = pacoteCRUD.findAll();
+List<Pacote> pacotes = pacoteCRUD.findPublicOfertas(100);
+if (pacotes.isEmpty()) {
+    pacotes = pacoteCRUD.findPublicPacotes(100);
+}
+java.text.DecimalFormatSymbols symPr = new java.text.DecimalFormatSymbols(java.util.Locale.forLanguageTag("pt-PT"));
+symPr.setDecimalSeparator(',');
+symPr.setGroupingSeparator(' ');
+java.text.DecimalFormat dfPromo = new java.text.DecimalFormat("#,##0.00", symPr);
 String selP = request.getParameter("selectedPromocao");
 Promocao selPromo = null;
 if (selP != null && !selP.trim().isEmpty()) {
@@ -40,8 +47,26 @@ boolean selInvalid = selP != null && !selP.trim().isEmpty() && selPromo == null;
     <% if ("promotion-deleted".equals(success)) { %>
     <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--success">Promoção eliminada com sucesso.</div></div>
     <% } %>
-    <% if ("invalid-data".equals(error)) { %>
-    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Dados inválidos.</div></div>
+    <% if ("invalid-data".equals(error) || "invalid-action".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Pedido inválido. Tenta novamente.</div></div>
+    <% } %>
+    <% if ("missing-pacote".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Seleciona uma oferta ou pacote alvo.</div></div>
+    <% } %>
+    <% if ("invalid-pacote".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">O pacote selecionado não é válido para promoção pública.</div></div>
+    <% } %>
+    <% if ("missing-dates".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Indica a data de início e de fim da promoção.</div></div>
+    <% } %>
+    <% if ("invalid-dates".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">A data de fim não pode ser anterior à data de início.</div></div>
+    <% } %>
+    <% if ("invalid-discount".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">O desconto deve ser entre 1% e 99%.</div></div>
+    <% } %>
+    <% if ("save-failed".equals(error)) { %>
+    <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Não foi possível guardar a promoção. Verifica os dados e tenta novamente.</div></div>
     <% } %>
     <% if (selInvalid) { %>
     <div class="staff-offers-alert-wrap"><div class="staff-offers-alert staff-offers-alert--error">Promoção não encontrada.</div></div>
@@ -104,23 +129,48 @@ boolean selInvalid = selP != null && !selP.trim().isEmpty() && selPromo == null;
         <button type="button" class="staff-drawer__close" id="staffPromoCloseCreate" aria-label="Fechar">&times;</button>
     </div>
     <div class="staff-drawer__body flow">
-        <form class="flow" action="${pageContext.request.contextPath}/staff-promotions" method="post">
+        <form class="flow" id="staffPromoCreateForm" action="${pageContext.request.contextPath}/staff-promotions" method="post">
             <input type="hidden" name="action" value="create-promotion">
             <div>
+                <label for="promoPacC">Oferta / pacote alvo</label>
+                <select id="promoPacC" name="idPacote" required>
+                    <option value="">— Seleciona uma oferta —</option>
+                    <% for (Pacote pk : pacotes) {
+                        String destPreview = pk.getNome() != null ? pk.getNome() : ("Oferta #" + pk.getIdPacote());
+                    %>
+                    <option value="<%= pk.getIdPacote() %>"
+                        data-nome="<%= escAttr(pk.getNome()) %>"
+                        data-destino="<%= escAttr(destPreview) %>"
+                        data-preco="<%= pk.getPrecoBase() %>"
+                        data-imagem="<%= escAttr(pk.getImagemUrl() != null ? pk.getImagemUrl() : "") %>"><%= pk.getNome() != null ? pk.getNome() : ("#" + pk.getIdPacote()) %> — <%= dfPromo.format(pk.getPrecoBase()) %> €</option>
+                    <% } %>
+                </select>
+            </div>
+            <div id="promoPreviewC" class="staff-promo-preview" hidden>
+                <p><strong id="promoPreviewNomeC"></strong></p>
+                <p class="text-muted" id="promoPreviewDestC"></p>
+                <p>Preço original: <strong id="promoPreviewPrecoC"></strong></p>
+                <p id="promoPreviewFinalC" class="staff-promo-preview__final"></p>
+            </div>
+            <div>
+                <label for="promoDescC">Desconto (%)</label>
+                <input type="number" id="promoDescC" name="desconto_percent" min="1" max="99" step="1" value="10" required>
+            </div>
+            <div>
                 <label for="promoTituloC">Título</label>
-                <input type="text" id="promoTituloC" name="titulo" required>
+                <input type="text" id="promoTituloC" name="titulo" placeholder="Preenchido automaticamente ao escolher o pacote">
             </div>
             <div>
                 <label for="promoDestC">Destino</label>
-                <input type="text" id="promoDestC" name="destino" required>
+                <input type="text" id="promoDestC" name="destino" placeholder="Preenchido automaticamente ao escolher o pacote">
             </div>
             <div>
                 <label for="promoPiC">Início</label>
-                <input type="date" id="promoPiC" name="periodo_inicio">
+                <input type="date" id="promoPiC" name="periodo_inicio" required>
             </div>
             <div>
                 <label for="promoPfC">Fim</label>
-                <input type="date" id="promoPfC" name="periodo_fim">
+                <input type="date" id="promoPfC" name="periodo_fim" required>
             </div>
             <div>
                 <label for="promoCondC">Condição</label>
@@ -128,16 +178,7 @@ boolean selInvalid = selP != null && !selP.trim().isEmpty() && selPromo == null;
             </div>
             <div>
                 <label for="promoEstC">Estado</label>
-                <input type="text" id="promoEstC" name="estado" required>
-            </div>
-            <div>
-                <label for="promoPacC">Pacote (opcional)</label>
-                <select id="promoPacC" name="idPacote">
-                    <option value="0">—</option>
-                    <% for (Pacote pk : pacotes) { %>
-                    <option value="<%= pk.getIdPacote() %>"><%= pk.getNome() != null ? pk.getNome() : ("#" + pk.getIdPacote()) %></option>
-                    <% } %>
-                </select>
+                <input type="text" id="promoEstC" name="estado" value="Ativa" required>
             </div>
             <div class="actions-row" style="margin-top: 1rem;">
                 <button class="btn btn-primary" type="submit">Criar promoção</button>
@@ -276,5 +317,40 @@ boolean selInvalid = selP != null && !selP.trim().isEmpty() && selPromo == null;
       else if (drawerEdit && drawerEdit.classList.contains('is-open')) closeEditNav();
     }
   });
+  function fmtEuro(v) {
+    return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(v);
+  }
+  function syncPromoPreview(prefix) {
+    var sel = document.getElementById('promoPac' + prefix);
+    var preview = document.getElementById('promoPreview' + prefix);
+    if (!sel || !preview) return;
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+      preview.hidden = true;
+      return;
+    }
+    preview.hidden = false;
+    var nome = opt.getAttribute('data-nome') || '';
+    var dest = opt.getAttribute('data-destino') || '';
+    var preco = parseFloat(opt.getAttribute('data-preco') || '0');
+    document.getElementById('promoPreviewNome' + prefix).textContent = nome;
+    document.getElementById('promoPreviewDest' + prefix).textContent = dest;
+    document.getElementById('promoPreviewPreco' + prefix).textContent = fmtEuro(preco);
+    var descInput = document.getElementById('promoDesc' + prefix);
+    var pct = descInput ? parseFloat(descInput.value || '0') : 0;
+    var finalP = preco * (1 - Math.min(90, Math.max(0, pct)) / 100);
+    document.getElementById('promoPreviewFinal' + prefix).textContent =
+      'Preço promocional (' + pct + '%): ' + fmtEuro(finalP);
+    if (prefix === 'C') {
+      var titulo = document.getElementById('promoTituloC');
+      var destino = document.getElementById('promoDestC');
+      if (titulo && !titulo.dataset.touched) titulo.value = nome ? 'Promoção — ' + nome : '';
+      if (destino && !destino.dataset.touched) destino.value = dest;
+    }
+  }
+  document.getElementById('promoPacC')?.addEventListener('change', function() { syncPromoPreview('C'); });
+  document.getElementById('promoDescC')?.addEventListener('input', function() { syncPromoPreview('C'); });
+  document.getElementById('promoTituloC')?.addEventListener('input', function() { this.dataset.touched = '1'; });
+  document.getElementById('promoDestC')?.addEventListener('input', function() { this.dataset.touched = '1'; });
 })();
 </script>

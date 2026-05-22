@@ -36,7 +36,12 @@ private String formatDate(java.time.LocalDate date, DateTimeFormatter formatter)
 }
 private String formatTime(Timestamp timestamp, DateTimeFormatter formatter) {
     if (timestamp == null) return "";
-    return timestamp.toLocalDateTime().format(formatter);
+    String t = timestamp.toLocalDateTime().format(formatter);
+    if ("00:00".equals(t) || "00:00:00".equals(t)) return "";
+    return t;
+}
+private boolean hasSegmentRoute(Viagens v) {
+    return v != null && (hasText(v.getOrigem()) || hasText(v.getDestino()));
 }
 private String formatHotelCategory(Alojamento a) {
     if (a == null) return "Classificação não disponível";
@@ -90,8 +95,12 @@ private String flightSegmentTitle(Viagens v) {
 }
 private String flightStopsLabel(java.util.List<Viagens> leg) {
     if (leg == null || leg.isEmpty()) return "Direto";
-    int escalas = Math.max(0, leg.size() - 1);
-    if (escalas == 0) return "Direto";
+    int valid = 0;
+    for (Viagens v : leg) {
+        if (hasSegmentRoute(v)) valid++;
+    }
+    if (valid <= 1) return "Direto";
+    int escalas = valid - 1;
     if (escalas == 1) return "1 escala";
     return escalas + " escalas";
 }
@@ -109,13 +118,18 @@ private String renderFlightTimelineItem(Viagens v, DateTimeFormatter timeFormatt
     }
     String partida = formatTime(v.getDataHoraPartida(), timeFormatter);
     String chegada = formatTime(v.getDataHoraRegresso(), timeFormatter);
-    if (hasText(partida) || hasText(chegada)) {
-        sb.append("<p class=\"te-flight-segment__times\">");
-        if (hasText(partida)) sb.append("Partida ").append(escapeHtml(partida));
-        if (hasText(partida) && hasText(chegada)) sb.append(" · ");
-        if (hasText(chegada)) sb.append("Chegada ").append(escapeHtml(chegada));
-        sb.append("</p>");
+    sb.append("<p class=\"te-flight-segment__times\">");
+    if (hasText(partida)) {
+        sb.append("Partida ").append(escapeHtml(partida));
+        if (hasText(chegada)) sb.append(" · ");
     }
+    if (hasText(chegada)) {
+        sb.append("Chegada ").append(escapeHtml(chegada));
+    }
+    if (!hasText(partida) && !hasText(chegada)) {
+        sb.append(escapeHtml("Horário não disponível"));
+    }
+    sb.append("</p>");
     if (v.getPreco() > 0) {
         sb.append("<p class=\"te-flight-segment__price\">").append(escapeHtml(currencyFormat.format(v.getPreco()))).append("</p>");
     }
@@ -271,6 +285,17 @@ if (voosIda.isEmpty() && voosRegresso.isEmpty() && !viagens.isEmpty()) {
     <div class="te-alert te-alert--warn">Escreve uma mensagem antes de enviar.</div>
     <% } %>
 
+    <% if (pacote != null) {
+        String resImg = Connection.PacotePublicHelper.resolveImageSrc(pacote, ctx);
+        int resG = Connection.PacotePublicHelper.gradientSeed(pacote.getIdPacote());
+        boolean resGrad = resImg == null || (!resImg.startsWith("http://") && !resImg.startsWith("https://"));
+    %>
+    <div class="te-booking-hero-visual card__media<% if (resGrad) { %> card__media--gradient card__media--gradient-<%= resG %><% } %>" style="margin-bottom:1rem;border-radius:18px;overflow:hidden;min-height:120px;max-height:220px;">
+        <% if (!resGrad && resImg != null) { %>
+        <img src="<%= escapeHtml(resImg) %>" alt="" style="width:100%;height:220px;object-fit:cover;display:block;" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove(); this.parentElement.classList.add('card__media--gradient', 'card__media--gradient-<%= resG %>', 'card__media--gradient-fallback');">
+        <% } %>
+    </div>
+    <% } %>
     <section class="te-booking-hero">
         <div class="te-booking-hero__main">
             <span class="te-booking-hero__pill"><%= escapeHtml(status) %></span>

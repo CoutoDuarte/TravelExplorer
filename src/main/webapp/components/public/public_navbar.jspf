@@ -15,7 +15,6 @@ String ctx = request.getContextPath();
 
         <ul class="public-navbar__links public-navbar__links--center" role="list">
             <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp">Início</a></li>
-            <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp?page=destinations">Destinos</a></li>
             <li><a class="public-navbar__link" href="<%= ctx %>/index.jsp?page=about">Sobre</a></li>
         </ul>
 

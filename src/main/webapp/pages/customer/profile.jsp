@@ -171,7 +171,7 @@ if (!"POST".equalsIgnoreCase(request.getMethod()) || profileMessage != null) {
 
             <div class="actions-row">
                 <button class="btn btn-primary" type="submit">Guardar alterações</button>
-                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp?page=offers">Explorar ofertas</a>
+                <a class="btn btn-secondary" href="${pageContext.request.contextPath}/index.jsp#hero-studio">Planear viagem</a>
             </div>
 
             

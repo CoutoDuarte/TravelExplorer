@@ -202,7 +202,7 @@ String totalPaid = currencyFormat.format(totalPaidValue);
 
             <% if (ofertasGuardadas.isEmpty()) { %>
                 <p class="text-muted">Ainda não guardaste nenhuma oferta.</p>
-                <a class="btn btn-primary" href="<%= ctxPath %>/index.jsp?page=destinations">Ver destinos</a>
+                <a class="btn btn-primary" href="<%= ctxPath %>/index.jsp#hero-studio">Planear viagem</a>
             <% } else { %>
                 <div class="customer-dashboard-grid">
                     <% for (ClienteOfertaGuardada oferta : ofertasGuardadas) {

@@ -77,6 +77,9 @@ try {
     <% if ("payment-done".equals(request.getParameter("success"))) { %>
     <div class="surface-block"><p class="text-muted">Pagamento confirmado. A tua reserva foi atualizada.</p></div>
     <% } %>
+    <% if ("created".equals(request.getParameter("success"))) { %>
+    <div class="surface-block public-search-alert--success"><p>Reserva criada com sucesso.</p></div>
+    <% } %>
 
     <% if (technicalError != null) { %>
         <div class="surface-block">
